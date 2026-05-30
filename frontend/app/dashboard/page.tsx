@@ -1,140 +1,169 @@
 "use client";
+export const dynamic = 'force-dynamic';
 
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import AppShell from "@/components/layout/app-shell";
+import StatCard from "@/components/ui/stat-card";
+import InterviewCard from "@/components/ui/interview-card";
+import CommandPalette from "@/components/ui/command-palette";
+import {
+  Mic2, BarChart3, Trophy, AlertTriangle, Plus, ArrowRight,
+  Flame, Command, Zap,
+} from "lucide-react";
 
-// Mock past interviews — replace with real API
 const PAST_INTERVIEWS = [
-  {
-    id: 1,
-    company: "NVIDIA",
-    role: "PTX Compiler Intern",
-    date: "2025-05-28",
-    score: 78,
-    status: "completed",
-    sections: 4,
-  },
-  {
-    id: 2,
-    company: "Amazon",
-    role: "SDE-1",
-    date: "2025-05-25",
-    score: 84,
-    status: "completed",
-    sections: 4,
-  },
-  {
-    id: 3,
-    company: "Google",
-    role: "Software Engineer L3",
-    date: "2025-05-20",
-    score: 71,
-    status: "completed",
-    sections: 5,
-  },
+  { id: 1, company: "NVIDIA",    role: "PTX Compiler Intern",    date: "2025-05-28", score: 78, status: "completed" as const, skills: ["Compilers", "C++", "Graphs"] },
+  { id: 2, company: "Amazon",    role: "SDE-1",                  date: "2025-05-25", score: 84, status: "completed" as const, skills: ["Arrays", "DP", "OOP"] },
+  { id: 3, company: "Google",    role: "Software Engineer L3",   date: "2025-05-20", score: 71, status: "completed" as const, skills: ["Graphs", "System Design", "BFS/DFS"] },
+  { id: 4, company: "Meta",      role: "Production Engineer",    date: "2025-05-15", score: 89, status: "completed" as const, skills: ["Linux", "Python", "Infra"] },
+  { id: 5, company: "Microsoft", role: "SWE Intern",             date: "2025-05-10", score: 66, status: "completed" as const, skills: ["Trees", "DP", "APIs"] },
 ];
-
-const scoreColor = (s: number) =>
-  s >= 80 ? "text-green-400" : s >= 65 ? "text-yellow-400" : "text-red-400";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const avgScore =
-    Math.round(
-      PAST_INTERVIEWS.reduce((acc, i) => acc + i.score, 0) / PAST_INTERVIEWS.length
-    );
+  useEffect(() => {
+    setMounted(true);
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setCmdOpen(true); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  const avgScore = Math.round(PAST_INTERVIEWS.reduce((a, i) => a + i.score, 0) / PAST_INTERVIEWS.length);
+  const best = [...PAST_INTERVIEWS].sort((a, b) => b.score - a.score)[0];
+  const worst = [...PAST_INTERVIEWS].sort((a, b) => a.score - b.score)[0];
 
   return (
-    <main className="min-h-screen bg-background px-4 py-10">
-      {/* Background glow */}
-      <div className="fixed inset-0 -z-10 pointer-events-none">
-        <div className="absolute top-0 right-0 w-[500px] h-[400px] bg-violet-700/10 rounded-full blur-[120px]" />
-      </div>
+    <AppShell>
+      <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
 
-      <div className="max-w-5xl mx-auto space-y-8">
-        {/* Top bar */}
-        <div className="flex items-center justify-between">
+      <div style={{ padding: "32px", maxWidth: "1100px" }}>
+        {/* ── Top bar ── */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "32px" }}>
           <div>
-            <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Track your interview preparation progress
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+              <Flame size={16} color="#F59E0B" />
+              <span style={{ fontSize: "12px", color: "#F59E0B", fontWeight: 600 }}>5-day streak</span>
+            </div>
+            <h1 style={{ fontSize: "26px", fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.5px", lineHeight: 1.2 }}>
+              Welcome back, Harshvardhan
+            </h1>
+            <p style={{ fontSize: "13.5px", color: "var(--text-secondary)", marginTop: "4px" }}>
+              Continue improving your interview readiness.
             </p>
           </div>
-          <Button
-            id="new-interview-dashboard-btn"
-            onClick={() => router.push("/interview/new")}
-            className="bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 text-white font-semibold"
-          >
-            + New Interview
-          </Button>
-        </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[
-            { label: "Interviews", value: PAST_INTERVIEWS.length, icon: "🎤" },
-            { label: "Avg Score", value: `${avgScore}/100`, icon: "📊" },
-            { label: "Companies", value: new Set(PAST_INTERVIEWS.map((i) => i.company)).size, icon: "🏢" },
-          ].map((stat) => (
-            <Card
-              key={stat.label}
-              className="border-white/10 bg-white/5 text-center py-6"
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <button
+              onClick={() => setCmdOpen(true)}
+              style={{
+                display: "flex", alignItems: "center", gap: "7px",
+                padding: "9px 14px", borderRadius: "10px", fontSize: "12.5px",
+                background: "var(--surface-1)", border: "1px solid var(--border-subtle)",
+                color: "var(--text-muted)", cursor: "pointer", fontFamily: "inherit",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-subtle)"; }}
             >
-              <div className="text-3xl mb-2">{stat.icon}</div>
-              <div className="text-2xl font-bold text-white">{stat.value}</div>
-              <div className="text-xs text-muted-foreground mt-1">{stat.label}</div>
-            </Card>
-          ))}
+              <Command size={12} />
+              <span>Command</span>
+              <kbd style={{ fontSize: "10px", background: "rgba(255,255,255,0.05)", border: "1px solid var(--border-subtle)", borderRadius: "4px", padding: "1px 4px" }}>K</kbd>
+            </button>
+            <button
+              id="new-interview-dashboard-btn"
+              onClick={() => router.push("/interview/new")}
+              style={{
+                display: "flex", alignItems: "center", gap: "8px",
+                padding: "10px 18px", borderRadius: "10px", fontSize: "13px", fontWeight: 600,
+                background: "linear-gradient(135deg, #7C3AED, #6366F1)",
+                border: "none", color: "white", cursor: "pointer",
+                boxShadow: "0 4px 16px rgba(124,58,237,0.35)",
+                transition: "all 0.2s ease", fontFamily: "inherit",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 24px rgba(124,58,237,0.5)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(124,58,237,0.35)"; }}
+            >
+              <Plus size={15} /> New Interview
+            </button>
+          </div>
         </div>
 
-        {/* Interview history */}
+        {/* ── Hero card ── */}
+        <div style={{
+          borderRadius: "20px", padding: "28px 32px",
+          background: "linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(99,102,241,0.1) 50%, rgba(9,9,11,0) 100%)",
+          border: "1px solid rgba(139,92,246,0.2)",
+          marginBottom: "24px", position: "relative", overflow: "hidden",
+        }}>
+          <div style={{ position: "absolute", top: "-40px", right: "-40px", width: "200px", height: "200px", background: "radial-gradient(ellipse, rgba(124,58,237,0.2) 0%, transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "8px" }}>
+            <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "linear-gradient(135deg, #7C3AED, #6366F1)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 16px rgba(124,58,237,0.4)" }}>
+              <Zap size={18} color="white" fill="white" />
+            </div>
+            <div>
+              <h2 style={{ fontSize: "17px", fontWeight: 700, color: "var(--text-primary)" }}>Ready to practice?</h2>
+              <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Your next interview session is waiting.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => router.push("/interview/new")}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: "8px",
+              padding: "10px 20px", borderRadius: "10px", fontSize: "13px", fontWeight: 600,
+              background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)",
+              color: "var(--text-primary)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.15)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.1)"; }}
+          >
+            Start Interview <ArrowRight size={14} />
+          </button>
+        </div>
+
+        {/* ── Stat cards ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "32px" }}>
+          <StatCard id="stat-interviews" label="Total Interviews"  value={PAST_INTERVIEWS.length}   icon={Mic2}         iconColor="#8B5CF6" trend="up"   trendLabel="+2 this week" />
+          <StatCard id="stat-avg-score"  label="Average Score"    value={`${avgScore}/100`}         icon={BarChart3}    iconColor="#6366F1" trend="up"   trendLabel="+4 pts" />
+          <StatCard id="stat-best"       label="Top Performance"  value={best.company}              icon={Trophy}       iconColor="#22C55E" trend="up"   trendLabel={`${best.score}/100`} />
+          <StatCard id="stat-weak"       label="Needs Attention"  value={worst.company}             icon={AlertTriangle} iconColor="#F59E0B" trend="down" trendLabel={`${worst.score}/100`} />
+        </div>
+
+        {/* ── Interview History ── */}
         <div>
-          <h2 className="text-lg font-semibold text-white mb-4">Interview History</h2>
-          <div className="space-y-3">
-            {PAST_INTERVIEWS.map((interview) => (
-              <Card
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>
+              Interview History
+            </h2>
+            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{PAST_INTERVIEWS.length} sessions</span>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {PAST_INTERVIEWS.map((interview, i) => (
+              <div
                 key={interview.id}
-                id={`interview-card-${interview.id}`}
-                className="border-white/10 bg-white/5 hover:border-violet-500/30 hover:bg-white/8 transition-all duration-200 cursor-pointer"
-                onClick={() => router.push(`/report/${interview.id}`)}
+                style={{ opacity: mounted ? 1 : 0, transform: mounted ? "translateY(0)" : "translateY(8px)", transition: `all 0.35s ease ${i * 60}ms` }}
               >
-                <CardContent className="flex items-center justify-between py-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600/40 to-cyan-600/40 border border-white/10 flex items-center justify-center text-lg">
-                      🎤
-                    </div>
-                    <div>
-                      <p className="text-white font-medium">{interview.role}</p>
-                      <p className="text-muted-foreground text-sm">
-                        {interview.company} · {interview.date}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Badge
-                      variant="outline"
-                      className="border-green-500/30 bg-green-500/10 text-green-400 text-xs"
-                    >
-                      {interview.status}
-                    </Badge>
-                    <div className="text-right">
-                      <div className={`text-xl font-bold ${scoreColor(interview.score)}`}>
-                        {interview.score}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground">/ 100</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                <InterviewCard
+                  id={`interview-card-${interview.id}`}
+                  company={interview.company}
+                  role={interview.role}
+                  date={interview.date}
+                  score={interview.score}
+                  status={interview.status}
+                  skills={interview.skills}
+                  onClick={() => router.push(`/report/${interview.id}`)}
+                />
+              </div>
             ))}
           </div>
         </div>
       </div>
-    </main>
+    </AppShell>
   );
 }

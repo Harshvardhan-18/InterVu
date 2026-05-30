@@ -1,12 +1,13 @@
 "use client";
+export const dynamic = 'force-dynamic';
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
+import Link from "next/link";
+import {
+  Zap, ChevronRight, CheckCircle2, Circle, Send,
+  ArrowRight, Mic, Paperclip, BarChart3,
+} from "lucide-react";
 
 type Message = {
   role: "interviewer" | "user";
@@ -22,10 +23,20 @@ type Message = {
 const MOCK_QUESTIONS = [
   "Tell me about yourself and why you're interested in this role.",
   "Explain the difference between BFS and DFS. When would you use each?",
-  "What is the time and space complexity of Dijkstra's algorithm?",
+  "What is the time and space complexity of Dijkstra's algorithm, and how does it compare to Bellman-Ford?",
   "Design a rate limiter for an API that handles 10,000 requests per second.",
   "Tell me about a time you disagreed with a teammate and how you resolved it.",
 ];
+
+const TOPICS = [
+  { label: "Intro & Background",    section: "Screening"     },
+  { label: "BFS / DFS",            section: "Coding"        },
+  { label: "Graph Algorithms",     section: "Coding"        },
+  { label: "System Design",        section: "Role Specific" },
+  { label: "Behavioral",           section: "Behavioral"    },
+];
+
+const SECTIONS = ["Screening", "Coding", "Role Specific", "Behavioral"];
 
 export default function InterviewPage() {
   const router = useRouter();
@@ -40,194 +51,387 @@ export default function InterviewPage() {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [complete, setComplete] = useState(false);
   const [currentSection, setCurrentSection] = useState("Screening");
+  const [liveScore, setLiveScore] = useState<number | null>(null);
+  const [expandedEval, setExpandedEval] = useState<number | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, submitting]);
 
   const totalQuestions = MOCK_QUESTIONS.length;
   const progress = Math.round((questionIndex / totalQuestions) * 100);
 
   const handleSubmit = async () => {
     if (!answer.trim() || submitting) return;
-
     const userMsg: Message = { role: "user", content: answer };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages(prev => [...prev, userMsg]);
     setAnswer("");
     setSubmitting(true);
 
-    // TODO: POST /api/interviews/{id}/answer
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise(r => setTimeout(r, 1600));
 
+    const score = Math.round((6.5 + Math.random() * 3.5) * 10) / 10;
     const mockEval = {
-      score: Math.round((6 + Math.random() * 4) * 10) / 10,
-      brief_feedback: "Good answer! You demonstrated solid understanding.",
-      strengths: ["Clear explanation", "Good use of examples"],
-      weaknesses: ["Could mention edge cases"],
+      score,
+      brief_feedback: "Solid answer with good technical depth.",
+      strengths: ["Clear explanation", "Good use of examples", "Correct complexity analysis"],
+      weaknesses: ["Could mention edge cases", "Discuss trade-offs more explicitly"],
     };
 
-    const nextIdx = questionIndex + 1;
+    const newLive = Math.round(((liveScore ?? 0) * questionIndex + score * 10) / (questionIndex + 1));
+    setLiveScore(newLive);
 
+    const nextIdx = questionIndex + 1;
     if (nextIdx >= totalQuestions) {
-      setMessages((prev) => [
+      setMessages(prev => [
         ...prev,
-        {
-          role: "interviewer",
-          content: "That concludes our interview. Great job! Let me generate your feedback report.",
-          evaluation: mockEval,
-        },
+        { role: "interviewer", content: "That concludes our interview! You did well. Let me generate your detailed feedback report.", evaluation: mockEval },
       ]);
       setComplete(true);
     } else {
-      const sections = ["Screening", "Coding", "Role Specific", "Behavioral"];
-      setCurrentSection(sections[Math.min(nextIdx, sections.length - 1)]);
-      setMessages((prev) => [
+      setCurrentSection(SECTIONS[Math.min(nextIdx, SECTIONS.length - 1)]);
+      setMessages(prev => [
         ...prev,
         { role: "interviewer", content: MOCK_QUESTIONS[nextIdx], evaluation: mockEval },
       ]);
       setQuestionIndex(nextIdx);
     }
-
     setSubmitting(false);
   };
 
   const scoreColor = (s: number) =>
-    s >= 8 ? "text-green-400" : s >= 6 ? "text-yellow-400" : "text-red-400";
+    s >= 8 ? "#22C55E" : s >= 6 ? "#F59E0B" : "#EF4444";
+
+  const autoResize = (el: HTMLTextAreaElement) => {
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 160) + "px";
+  };
 
   return (
-    <main className="min-h-screen bg-background flex flex-col">
-      {/* ── Top Bar ── */}
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-background/90 backdrop-blur px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="font-bold text-lg bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
+    <div style={{ display: "flex", height: "100vh", background: "var(--bg-base)", overflow: "hidden" }}>
+
+      {/* ── Left Sidebar ── */}
+      <aside style={{
+        width: "220px", flexShrink: 0, display: "flex", flexDirection: "column",
+        borderRight: "1px solid var(--border-subtle)", background: "var(--surface-1)",
+        padding: "20px 16px", gap: "24px", overflowY: "auto",
+      }}>
+        {/* Logo */}
+        <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ width: "28px", height: "28px", borderRadius: "8px", background: "linear-gradient(135deg,#7C3AED,#6366F1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Zap size={13} color="white" fill="white" />
+          </div>
+          <span style={{ fontSize: "15px", fontWeight: 700, background: "linear-gradient(135deg,#A78BFA,#818CF8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
             InterVu
           </span>
-          <Separator orientation="vertical" className="h-5 bg-white/20" />
-          <Badge
-            id="section-badge"
-            variant="outline"
-            className="border-violet-500/40 text-violet-300 bg-violet-500/10"
-          >
-            {currentSection}
-          </Badge>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-xs text-muted-foreground">
-            {questionIndex + 1} / {totalQuestions}
-          </span>
-          <div className="w-32">
-            <Progress
-              id="interview-progress"
-              value={progress}
-              className="h-1.5 bg-white/10"
-            />
+        </Link>
+
+        {/* Progress */}
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Progress</span>
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-secondary)" }}>{questionIndex + 1}/{totalQuestions}</span>
+          </div>
+          <div style={{ height: "4px", background: "var(--surface-3)", borderRadius: "4px", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${progress}%`, background: "linear-gradient(90deg,#7C3AED,#6366F1)", borderRadius: "4px", transition: "width 0.5s ease" }} />
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px" }}>
+            <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>Question {questionIndex + 1}</span>
+            <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>{progress}%</span>
           </div>
         </div>
-      </header>
 
-      {/* ── Chat ── */}
-      <div className="flex-1 max-w-3xl w-full mx-auto px-4 py-8 space-y-6">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[85%] space-y-3`}>
-              {/* Bubble */}
-              <div
-                className={`rounded-2xl px-5 py-4 text-sm leading-relaxed ${
-                  msg.role === "interviewer"
-                    ? "bg-white/8 border border-white/10 text-white"
-                    : "bg-gradient-to-br from-violet-600 to-violet-700 text-white"
-                }`}
-              >
-                {msg.role === "interviewer" && (
-                  <p className="text-[10px] text-violet-400 font-semibold uppercase tracking-widest mb-2">
-                    Interviewer
-                  </p>
-                )}
-                {msg.content}
-              </div>
+        {/* Current section badge */}
+        <div style={{ padding: "10px 12px", borderRadius: "10px", background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.2)" }}>
+          <p style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "3px" }}>Current Section</p>
+          <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>{currentSection}</p>
+        </div>
 
-              {/* Evaluation card (shown after user answer) */}
-              {msg.role === "interviewer" && msg.evaluation && i > 0 && (
-                <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 space-y-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Previous answer score</span>
-                    <span className={`font-bold text-base ${scoreColor(msg.evaluation.score)}`}>
-                      {msg.evaluation.score}/10
-                    </span>
-                  </div>
-                  <p className="text-muted-foreground">{msg.evaluation.brief_feedback}</p>
-                  <div className="flex gap-4">
-                    <div>
-                      <p className="text-green-400 font-semibold mb-0.5">Strengths</p>
-                      {msg.evaluation.strengths.map((s) => (
-                        <p key={s} className="text-muted-foreground">• {s}</p>
-                      ))}
-                    </div>
-                    <div>
-                      <p className="text-red-400 font-semibold mb-0.5">Improve</p>
-                      {msg.evaluation.weaknesses.map((w) => (
-                        <p key={w} className="text-muted-foreground">• {w}</p>
-                      ))}
-                    </div>
-                  </div>
+        {/* Topics */}
+        <div>
+          <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "10px" }}>Topics</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            {TOPICS.map((t, i) => {
+              const done = i < questionIndex;
+              const active = i === questionIndex;
+              return (
+                <div key={t.label} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  {done
+                    ? <CheckCircle2 size={13} color="#22C55E" style={{ flexShrink: 0 }} />
+                    : active
+                      ? <div style={{ width: "13px", height: "13px", borderRadius: "50%", border: "2px solid #8B5CF6", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#8B5CF6" }} /></div>
+                      : <Circle size={13} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                  }
+                  <span style={{ fontSize: "12px", color: done ? "#22C55E" : active ? "var(--text-primary)" : "var(--text-muted)", fontWeight: active ? 600 : 400 }}>
+                    {t.label}
+                  </span>
                 </div>
-              )}
-            </div>
+              );
+            })}
           </div>
-        ))}
+        </div>
 
-        {submitting && (
-          <div className="flex justify-start">
-            <div className="bg-white/8 border border-white/10 rounded-2xl px-5 py-4 text-sm text-muted-foreground animate-pulse">
-              Evaluating your answer…
+        {/* Live score */}
+        {liveScore !== null && (
+          <div style={{ marginTop: "auto" }}>
+            <div style={{ padding: "16px", borderRadius: "12px", background: "var(--surface-2)", border: "1px solid var(--border-subtle)", textAlign: "center" }}>
+              <BarChart3 size={16} color="var(--text-muted)" style={{ margin: "0 auto 8px" }} />
+              <p style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "4px" }}>Live Score</p>
+              <p style={{ fontSize: "28px", fontWeight: 800, color: liveScore >= 75 ? "#22C55E" : liveScore >= 60 ? "#F59E0B" : "#EF4444", letterSpacing: "-1px" }}>
+                {liveScore}
+              </p>
+              <p style={{ fontSize: "10px", color: "var(--text-muted)" }}>/ 100</p>
             </div>
           </div>
         )}
+      </aside>
 
-        <div ref={bottomRef} />
-      </div>
+      {/* ── Main Chat Area ── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
 
-      {/* ── Input ── */}
-      <div className="sticky bottom-0 border-t border-white/10 bg-background/95 backdrop-blur px-4 py-4">
-        <div className="max-w-3xl mx-auto">
-          {complete ? (
-            <Button
-              id="view-report-btn"
-              onClick={() => router.push(`/report/${interviewId}`)}
-              className="w-full bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 text-white font-semibold"
-            >
-              View Full Report →
-            </Button>
-          ) : (
-            <div className="flex gap-3 items-end">
-              <Textarea
-                id="answer-input"
-                placeholder="Type your answer here… (Shift+Enter for new line)"
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit();
-                  }
-                }}
-                rows={3}
-                className="flex-1 bg-white/5 border-white/15 focus:border-violet-500 text-white placeholder:text-muted-foreground/50 resize-none"
-              />
-              <Button
-                id="submit-answer-btn"
-                onClick={handleSubmit}
-                disabled={!answer.trim() || submitting}
-                className="bg-violet-600 hover:bg-violet-500 text-white px-6 h-[76px] disabled:opacity-40"
-              >
-                {submitting ? "…" : "Send"}
-              </Button>
+        {/* Top bar */}
+        <header style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "0 28px", height: "56px",
+          borderBottom: "1px solid var(--border-subtle)",
+          background: "rgba(9,9,11,0.8)", backdropFilter: "blur(12px)",
+          flexShrink: 0,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)" }}>
+              Interview Session
+            </span>
+            <ChevronRight size={13} color="var(--text-muted)" />
+            <span style={{
+              fontSize: "11px", fontWeight: 700, padding: "3px 10px", borderRadius: "6px",
+              background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)", color: "#A78BFA",
+            }}>
+              {currentSection}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+              Q{questionIndex + 1} of {totalQuestions}
+            </span>
+            <div style={{ width: "80px", height: "3px", background: "var(--surface-3)", borderRadius: "3px", overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${progress}%`, background: "linear-gradient(90deg,#7C3AED,#6366F1)", transition: "width 0.5s ease" }} />
+            </div>
+          </div>
+        </header>
+
+        {/* Messages */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "28px", display: "flex", flexDirection: "column", gap: "20px" }}>
+          {messages.map((msg, i) => (
+            <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start", gap: "10px", animation: "fadeInUp 0.3s ease" }}>
+
+              {/* Bubble */}
+              {msg.role === "interviewer" ? (
+                <div style={{ maxWidth: "680px", width: "100%" }}>
+                  {/* Label */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                    <div style={{ width: "26px", height: "26px", borderRadius: "8px", background: "linear-gradient(135deg,#7C3AED,#6366F1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Zap size={12} color="white" fill="white" />
+                    </div>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: "0.07em" }}>AI Interviewer</span>
+                  </div>
+                  <div style={{
+                    padding: "18px 22px", borderRadius: "4px 18px 18px 18px",
+                    background: "var(--surface-1)", border: "1px solid var(--border-subtle)",
+                    fontSize: "14.5px", color: "var(--text-primary)", lineHeight: 1.7,
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+                  }}>
+                    {msg.content}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ maxWidth: "580px" }}>
+                  <div style={{
+                    padding: "16px 20px", borderRadius: "18px 4px 18px 18px",
+                    background: "linear-gradient(135deg, rgba(124,58,237,0.25), rgba(99,102,241,0.2))",
+                    border: "1px solid rgba(139,92,246,0.3)",
+                    fontSize: "14px", color: "var(--text-primary)", lineHeight: 1.7,
+                  }}>
+                    {msg.content}
+                  </div>
+                </div>
+              )}
+
+              {/* Evaluation card */}
+              {msg.role === "interviewer" && msg.evaluation && i > 0 && (
+                <div style={{ maxWidth: "680px", width: "100%" }}>
+                  <button
+                    onClick={() => setExpandedEval(expandedEval === i ? null : i)}
+                    style={{
+                      width: "100%", padding: "12px 16px", borderRadius: "12px",
+                      background: "var(--surface-2)", border: "1px solid var(--border-subtle)",
+                      display: "flex", alignItems: "center", gap: "12px",
+                      cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-subtle)"; }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
+                      <BarChart3 size={14} color="var(--text-muted)" />
+                      <span style={{ fontSize: "12.5px", color: "var(--text-secondary)", fontWeight: 500 }}>Previous answer</span>
+                    </div>
+                    <span style={{ fontSize: "16px", fontWeight: 800, color: scoreColor(msg.evaluation.score) }}>
+                      {msg.evaluation.score}/10
+                    </span>
+                    <ChevronRight size={13} color="var(--text-muted)" style={{ transform: expandedEval === i ? "rotate(90deg)" : "none", transition: "transform 0.2s ease" }} />
+                  </button>
+
+                  {expandedEval === i && (
+                    <div style={{
+                      marginTop: "6px", padding: "16px 18px", borderRadius: "12px",
+                      background: "var(--surface-1)", border: "1px solid var(--border-subtle)",
+                      animation: "fadeInUp 0.2s ease",
+                    }}>
+                      <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "14px", lineHeight: 1.6 }}>
+                        {msg.evaluation.brief_feedback}
+                      </p>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                        <div>
+                          <p style={{ fontSize: "11px", fontWeight: 700, color: "#22C55E", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>Strengths</p>
+                          {msg.evaluation.strengths.map(s => (
+                            <div key={s} style={{ display: "flex", alignItems: "flex-start", gap: "6px", marginBottom: "5px" }}>
+                              <CheckCircle2 size={12} color="#22C55E" style={{ marginTop: "2px", flexShrink: 0 }} />
+                              <span style={{ fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: 1.5 }}>{s}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div>
+                          <p style={{ fontSize: "11px", fontWeight: 700, color: "#F59E0B", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>Improve</p>
+                          {msg.evaluation.weaknesses.map(w => (
+                            <div key={w} style={{ display: "flex", alignItems: "flex-start", gap: "6px", marginBottom: "5px" }}>
+                              <div style={{ width: "12px", height: "12px", borderRadius: "50%", border: "1.5px solid #F59E0B", marginTop: "2px", flexShrink: 0 }} />
+                              <span style={{ fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: 1.5 }}>{w}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Thinking state */}
+          {submitting && (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", animation: "fadeIn 0.2s ease" }}>
+              <div style={{ width: "26px", height: "26px", borderRadius: "8px", background: "linear-gradient(135deg,#7C3AED,#6366F1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Zap size={12} color="white" fill="white" />
+              </div>
+              <div style={{ padding: "14px 18px", borderRadius: "4px 18px 18px 18px", background: "var(--surface-1)", border: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>Evaluating</span>
+                <div style={{ display: "flex", gap: "4px" }}>
+                  <div className="typing-dot" />
+                  <div className="typing-dot" />
+                  <div className="typing-dot" />
+                </div>
+              </div>
             </div>
           )}
+
+          <div ref={bottomRef} />
+        </div>
+
+        {/* ── Input area ── */}
+        <div style={{
+          padding: "16px 28px 20px",
+          borderTop: "1px solid var(--border-subtle)",
+          background: "rgba(9,9,11,0.9)", backdropFilter: "blur(12px)",
+          flexShrink: 0,
+        }}>
+          {complete ? (
+            <button
+              id="view-report-btn"
+              onClick={() => router.push(`/report/${interviewId}`)}
+              style={{
+                width: "100%", padding: "15px", borderRadius: "12px",
+                background: "linear-gradient(135deg,#7C3AED,#6366F1)",
+                border: "none", color: "white", fontSize: "15px", fontWeight: 700,
+                cursor: "pointer", fontFamily: "inherit",
+                boxShadow: "0 8px 24px rgba(124,58,237,0.4)",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 16px 40px rgba(124,58,237,0.55)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 24px rgba(124,58,237,0.4)"; }}
+            >
+              View Full Report <ArrowRight size={16} />
+            </button>
+          ) : (
+            <div style={{
+              display: "flex", alignItems: "flex-end", gap: "10px",
+              background: "var(--surface-1)", border: "1px solid var(--border-default)",
+              borderRadius: "16px", padding: "12px 14px",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
+              transition: "border-color 0.2s ease",
+            }}
+              onFocusCapture={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(124,58,237,0.5)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 24px rgba(0,0,0,0.3), 0 0 0 3px rgba(124,58,237,0.1)"; }}
+              onBlurCapture={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 24px rgba(0,0,0,0.3)"; }}
+            >
+              <textarea
+                id="answer-input"
+                ref={textareaRef}
+                value={answer}
+                onChange={e => { setAnswer(e.target.value); autoResize(e.target); }}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
+                placeholder="Type your answer… (Enter to send, Shift+Enter for new line)"
+                rows={1}
+                style={{
+                  flex: 1, background: "transparent", border: "none", outline: "none",
+                  fontSize: "14px", color: "var(--text-primary)", lineHeight: 1.6,
+                  resize: "none", fontFamily: "inherit", minHeight: "24px", maxHeight: "160px",
+                }}
+              />
+
+              <div style={{ display: "flex", gap: "6px", alignItems: "center", flexShrink: 0 }}>
+                <button
+                  title="Attach Resume"
+                  style={{ width: "32px", height: "32px", borderRadius: "8px", background: "transparent", border: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.15s ease" }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--surface-2)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                >
+                  <Paperclip size={14} color="var(--text-muted)" />
+                </button>
+                <button
+                  title="Voice Input"
+                  style={{ width: "32px", height: "32px", borderRadius: "8px", background: "transparent", border: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.15s ease" }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--surface-2)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                >
+                  <Mic size={14} color="var(--text-muted)" />
+                </button>
+                <button
+                  id="submit-answer-btn"
+                  onClick={handleSubmit}
+                  disabled={!answer.trim() || submitting}
+                  style={{
+                    width: "36px", height: "36px", borderRadius: "10px",
+                    background: answer.trim() && !submitting ? "linear-gradient(135deg,#7C3AED,#6366F1)" : "var(--surface-2)",
+                    border: "none", display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: answer.trim() && !submitting ? "pointer" : "not-allowed",
+                    transition: "all 0.2s ease",
+                    boxShadow: answer.trim() && !submitting ? "0 4px 12px rgba(124,58,237,0.4)" : "none",
+                  }}
+                  onMouseEnter={(e) => { if (answer.trim() && !submitting) { (e.currentTarget as HTMLElement).style.transform = "scale(1.05)"; } }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+                >
+                  <Send size={15} color={answer.trim() && !submitting ? "white" : "var(--text-muted)"} />
+                </button>
+              </div>
+            </div>
+          )}
+          <p style={{ fontSize: "11px", color: "var(--text-muted)", textAlign: "center", marginTop: "8px" }}>
+            Enter to send · Shift+Enter for new line
+          </p>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

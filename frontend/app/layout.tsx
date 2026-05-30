@@ -5,16 +5,17 @@ import "./globals.css";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "InterVu — AI Interview Preparation",
   description:
-    "AI-powered interview preparation platform. Research companies, build knowledge bases, and ace your next interview with personalized AI coaching.",
-  keywords: ["interview preparation", "AI interview", "coding interview", "mock interview"],
+    "AI-powered interview preparation platform. Research companies, build knowledge bases, and ace your next interview with personalised AI coaching.",
+  keywords: ["interview preparation", "AI interview", "coding interview", "mock interview", "FAANG prep"],
   openGraph: {
     title: "InterVu — AI Interview Preparation",
-    description: "Ace your next interview with personalized AI coaching.",
+    description: "Ace your next interview with personalised AI coaching.",
     type: "website",
   },
 };
@@ -26,7 +27,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
+      <body className={`${inter.variable}`}>
         {children}
       </body>
     </html>
