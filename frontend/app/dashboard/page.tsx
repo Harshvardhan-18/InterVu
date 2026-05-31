@@ -8,8 +8,7 @@ import StatCard from "@/components/ui/stat-card";
 import InterviewCard from "@/components/ui/interview-card";
 import CommandPalette from "@/components/ui/command-palette";
 import {
-  Mic2, BarChart3, Trophy, AlertTriangle, Plus, ArrowRight,
-  Flame, Command, Zap,
+  Mic2, BarChart3, Trophy, AlertTriangle, Plus, ArrowRight, Command, Zap,
 } from "lucide-react";
 
 const PAST_INTERVIEWS = [
@@ -46,10 +45,6 @@ export default function DashboardPage() {
         {/* ── Top bar ── */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "32px" }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-              <Flame size={16} color="#F59E0B" />
-              <span style={{ fontSize: "12px", color: "#F59E0B", fontWeight: 600 }}>5-day streak</span>
-            </div>
             <h1 style={{ fontSize: "26px", fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.5px", lineHeight: 1.2 }}>
               Welcome back, Harshvardhan
             </h1>
