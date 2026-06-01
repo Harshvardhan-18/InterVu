@@ -12,10 +12,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from .search.tavily import TavilySearch
-from .search.firecrawl import FirecrawlAgent
-from .agents.extractor import ExtractorAgent
-from .rag.vector_store import VectorStore
+from search.tavily import TavilySearch
+from search.firecrawl import FirecrawlAgent
+from agents.extractor import ExtractorAgent
+from rag.vector_store import VectorStore
 
 
 class ResearchPipeline:
@@ -51,29 +51,29 @@ class ResearchPipeline:
         for r in search_results:
             if r["url"] in scraped_urls:
                 full = next(s for s in scraped if s["url"] == r["url"])
-                all_content.append({"url": r["url"], "content": full["content"]})
+                all_content.append({**r, "title": full["title"], "content": full["content"], "metadata":full["metadata"]})
             else:
-                all_content.append({"url": r["url"], "content": r.get("content", "")})
+                all_content.append({**r, "metadata":{}})
 
         # 3. Extract structured knowledge
         extracted = self.extractor.extract(company, role, all_content)
 
-        # 4. Embed and store in ChromaDB
-        chunks_added = 0
-        for item in all_content:
-            if item.get("content"):
-                chunks_added += self.vector_store.add_document(
-                    text=item["content"],
-                    metadata={
-                        "company": company,
-                        "role": role,
-                        "source": "research",
-                    },
-                    source_url=item.get("url", ""),
-                )
+        # # 4. Embed and store in ChromaDB
+        # chunks_added = 0
+        # for item in all_content:
+        #     if item.get("content"):
+        #         chunks_added += self.vector_store.add_document(
+        #             text=item["content"],
+        #             metadata={
+        #                 "company": company,
+        #                 "role": role,
+        #                 "source": "research",
+        #             },
+        #             source_url=item.get("url", ""),
+        #         )
 
         return {
             "extracted": extracted,
-            "chunks_added": chunks_added,
-            "urls_processed": len(all_content),
+            # "chunks_added": chunks_added,
+            # "urls_processed": len(all_content),
         }

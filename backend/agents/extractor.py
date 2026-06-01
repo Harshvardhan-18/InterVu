@@ -9,67 +9,119 @@ from __future__ import annotations
 
 import json
 from typing import Any
-
-from langchain_google_genai import ChatGoogleGenerativeAI
+import os
+from dotenv import load_dotenv
+from langchain_groq import ChatGroq
+load_dotenv()  # Load GROQ_API_KEY from .env file
 
 
 class ExtractorAgent:
     """Extracts structured interview knowledge from raw web content."""
 
-    def __init__(self, model: str = "gemini-2.5-flash-preview-05-20") -> None:
-        self.llm = ChatGoogleGenerativeAI(model=model)
+    def __init__(self, model: str = "llama-3.3-70b-versatile") -> None:
+        self.llm = ChatGroq(model=model,api_key=os.getenv("GROQ_API_KEY"))
 
-    def extract(
-        self,
-        company: str,
-        role: str,
-        raw_content: list[dict[str, str]],
-    ) -> dict[str, Any]:
+    def extract(self, company: str, role: str, raw_content: list[dict[str, Any]]) -> dict[str, Any]:
+        partials = []
+        for d in raw_content:
+            try:
+                partial=self.extract_doc(
+                    company=company,
+                    role=role,
+                    doc=d
+                )
+                partials.append(partial)
+            except Exception as e:
+                print(f"Error extracting from doc {d.get('url', 'unknown')}: {e}")
+        return self.merge_results(partials)
+    
+    def extract_doc(self,company:str,role:str,doc:dict[str,Any]) -> dict[str,Any]:
+        prompt = f"""
+            You are an expert at analyzing job postings and interview experiences.
+            Company: {company}
+            Role: {role}
+            Document Category:
+            {doc.get("category", "unknown")}
+            Document Title:
+            {doc.get("title", "unknown")}
+            Source URL:
+            {doc.get("url", "unknown")}
+            Content:
+            {doc.get("content", "")}
+            Respond ONLY with valid JSON:
+            {{
+            "skills": [],
+            "technologies": [],
+            "topics": [],
+            "responsibilities": [],
+            "rounds": [],
+            "behavioral_patterns": [],
+            "difficulty": "Easy | Medium | Hard",
+            "key_insights": []
+            }}
         """
-        Extract structured knowledge from raw content.
-
-        Args:
-            company: Target company name.
-            role: Target role.
-            raw_content: List of {url, content} dicts from research agent.
-
-        Returns:
-            {
-                "skills": [str, ...],
-                "topics": [str, ...],
-                "rounds": [str, ...],
-                "difficulty": "Easy" | "Medium" | "Hard",
-                "key_insights": [str, ...]
-            }
-        """
-        content_text = "\n\n---\n\n".join(
-            f"Source: {item.get('url', 'unknown')}\n{item.get('content', '')}"
-            for item in raw_content
-        )
-
-        prompt = f"""You are an expert at analyzing job postings and interview experiences.
-Company: {company}
-Role: {role}
-
-Analyze the following content and extract structured information:
-
-{content_text}
-
-Respond ONLY with valid JSON in this exact format:
-{{
-  "skills": ["skill1", "skill2", ...],
-  "topics": ["topic1", "topic2", ...],
-  "rounds": ["round1", "round2", ...],
-  "difficulty": "Easy" | "Medium" | "Hard",
-  "key_insights": ["insight1", "insight2", ...]
-}}"""
 
         response = self.llm.invoke(prompt)
         raw = response.content.strip()
 
         if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
+            raw = raw.replace("```json", "")
+            raw = raw.replace("```", "")
+            raw = raw.strip()
 
-        return json.loads(raw)
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            print("Failed to parse extraction JSON")
+            return {
+                "skills": [],
+                "technologies": [],
+                "topics": [],
+                "responsibilities": [],
+                "rounds": [],
+                "behavioral_patterns": [],
+                "difficulty": "Medium",
+                "key_insights": [],
+            }
+    
+    def merge_results(self,partials:list[dict[str,Any]])->dict[str,Any]:
+        skills = set()
+        technologies = set()
+        topics = set()
+        responsibilities = set()
+        rounds = set()
+        behavioral_patterns = set()
+        key_insights = set()
+
+        difficulties = []
+        
+        for result in partials:
+            skills.update(result.get("skills", []))
+            technologies.update(result.get("technologies", []))
+            topics.update(result.get("topics", []))
+            responsibilities.update(result.get("responsibilities", []))
+            rounds.update(result.get("rounds", []))
+            behavioral_patterns.update(result.get("behavioral_patterns", []))
+            key_insights.update(result.get("key_insights", []))
+            if result.get("difficulty"):
+                difficulties.append(result["difficulty"])
+
+        difficulty = "Medium"
+
+        if difficulties:
+            difficulty = max(difficulties, key=lambda d:{"Easy": 1, "Medium": 2, "Hard": 3}.get(d, 2))
+
+        return {
+            "skills": sorted(skills),
+            "technologies": sorted(technologies),
+            "topics": sorted(topics),
+            "responsibilities": sorted(responsibilities),
+            "rounds": sorted(rounds),
+            "behavioral_patterns": sorted(
+                behavioral_patterns
+            ),
+            "difficulty": difficulty,
+            "key_insights": sorted(
+                key_insights
+            ),
+        }
