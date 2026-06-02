@@ -77,9 +77,22 @@ class ResearchPipeline:
 
         ranked_results = self.rank_results(search_results)
 
-        job_results = [r for r in ranked_results if r["category"] == "job"]
-        interview_results = [r for r in ranked_results if r["category"] == "interview_experiences"]
-        process_results = [r for r in ranked_results if r["category"] == "process"]
+        BAD_URL_TERMS = {
+            "salary",
+            "compensation",
+            "benefits",
+            "recruiter",
+        }
+
+        job_results = [r for r in ranked_results
+                        if r["category"] == "job"
+                        and not any(term in r.get("url", "").lower() for term in BAD_URL_TERMS)]
+        interview_results = [r for r in ranked_results
+                            if r["category"] == "interview_experiences" 
+                            and not any(term in r.get("url", "").lower() for term in BAD_URL_TERMS)]
+        process_results = [r for r in ranked_results 
+                        if r["category"] == "process" 
+                        and not any(term in r.get("url", "").lower() for term in BAD_URL_TERMS)]
 
         selected_results = interview_results[:4] + process_results[:2] + job_results[:2]
 
@@ -90,9 +103,10 @@ class ResearchPipeline:
         if(len(selected_results)<8):
             used_urls = set(r["url"] for r in selected_results)
             for r in ranked_results:
-                if r["url"] not in used_urls:
+                if r["url"] not in used_urls and not any(term in r.get("url", "").lower() for term in BAD_URL_TERMS):
                     selected_results.append(r)
                     used_urls.add(r["url"])
+
                 if len(selected_results) >= 8:
                     break
 
@@ -137,7 +151,7 @@ class ResearchPipeline:
                         "company": company,
                         "role": role,
                         "source": item.get("source", ""),
-                        "category": item.get("category", ""),   
+                        "category": item.get("category", ""),    
                     },
                     source_url=item.get("url", ""),
                 )
