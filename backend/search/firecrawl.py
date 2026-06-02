@@ -37,15 +37,34 @@ class FirecrawlAgent:
                 url,
                 formats=["markdown"]
             )
+            content=self.clean_content(result.markdown)
+            content=content[:6000]  # Truncate to 6k chars to avoid huge docs
+            metadata=(dict(result.metadata) if result.metadata else {})
+            print(f"Scraped {url} (content length: {len(content)})")
             return{
                 "url": url,
-                "content": result.markdown,
-                "title": result.metadata.title,
-                "metadata": dict(result.metadata)
+                "content": content,
+                "content_length": len(content),
+                "title": getattr(result.metadata, "title", ""),
+                "metadata": metadata
             }
         except Exception as e:
             print(f"Error scraping {url}: {e}")
-            return {"url": url, "content": "", "title": "", "error": str(e)}
+            return {"url": url, "content": "", "title": "","content_length": 0, "error": str(e)}
+        
+    def clean_content(self, text: str) -> str:
+        if not text:
+            return ""
+
+        lines = text.splitlines()
+
+        cleaned = [
+            line.strip()
+            for line in lines
+            if len(line.strip()) > 2
+        ]
+
+        return "\n".join(cleaned)
 
     def scrape_urls(self, urls: list[str]) -> list[dict[str, Any]]:
         """

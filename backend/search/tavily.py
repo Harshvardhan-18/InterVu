@@ -10,6 +10,7 @@ import os
 from typing import Any
 from dotenv import load_dotenv
 from tavily import TavilyClient
+from urllib.parse import urlparse
 load_dotenv()  # Load TAVILY_API_KEY from .env file
 
 class TavilySearch:
@@ -27,7 +28,6 @@ class TavilySearch:
             - interview_experiences: Candidate-reported interview experiences.
             - skills: Required technical and non-technical skills.
             - process: Interview rounds and hiring process information.
-            - engineering: Engineering blogs and technical culture content.
 
         Args:
             company: Target company name.
@@ -44,9 +44,12 @@ class TavilySearch:
 
         "interview_experiences": [
             f"site:reddit.com {company} {role} interview experience",
-            f"site:reddit.com {company} {role} interview",
-            f"site:leetcode.com {company} {role} interview",
+            f"site:reddit.com {company} {role} interview questions",
+            f"site:leetcode.com {company} {role} interview experience",
+            f"site:leetcode.com {company} {role} interview questions",
             f"site:geeksforgeeks.org {company} {role} interview experience",
+            f"site:glassdoor.com {company} {role} interview experience",
+            f"site:glassdoor.com {company} {role} interview questions",
         ],
 
         "skills": [
@@ -55,10 +58,6 @@ class TavilySearch:
 
         "process": [
             f"{company} {role} interview process",
-        ],
-
-        "engineering": [
-            f"{company} engineering blog",
         ],
     }
 
@@ -71,7 +70,7 @@ class TavilySearch:
             max_results: Number of results to return.
 
         Returns:
-            List of {url, title, content} dicts.
+            List of {url, title, content, score} dicts.
         """
         try:
             response = self.client.search(
@@ -83,11 +82,13 @@ class TavilySearch:
         except Exception as e:
             print(f"Tavily search error for query '{query}': {e}")
             return []
+        print(f"Tavily search for query '{query}' returned {len(response.get('results', []))} results")
         return [
             {
                 "url": r.get("url", ""),
                 "title": r.get("title", ""),
                 "content": r.get("content", ""),
+                "score": r.get("score", 0.0),
             }
             for r in response.get("results", [])
         ]
@@ -103,7 +104,10 @@ class TavilySearch:
                 "title": "...",
                 "content": "...",
                 "category": "...",
-                "query": "..."
+                "query": "...",
+                "source": "...",
+                "score": float
+
                 }
             ]
         """
@@ -119,9 +123,11 @@ class TavilySearch:
                     if not url or url in seen_urls:
                         continue
                     seen_urls.add(url)
+                    source=urlparse(url).netloc.replace("www.","")
                     results.append({
                         **item,
                         "category": category,
                         "query": query,
+                        "source":source
                     })
         return results

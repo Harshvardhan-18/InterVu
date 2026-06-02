@@ -6,14 +6,15 @@ into structured knowledge: skills, topics, interview rounds, difficulty.
 """
 
 from __future__ import annotations
-
-import json
+from collections import Counter
 from typing import Any
+import json
 import os
+from prompts.extractor import EXTRACTOR_PROMPT
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
+from schemas.extractor import ExtractionResult
 load_dotenv()  # Load GROQ_API_KEY from .env file
-
 
 class ExtractorAgent:
     """Extracts structured interview knowledge from raw web content."""
@@ -36,54 +37,35 @@ class ExtractorAgent:
         return self.merge_results(partials)
     
     def extract_doc(self,company:str,role:str,doc:dict[str,Any]) -> dict[str,Any]:
-        prompt = f"""
-            You are an expert at analyzing job postings and interview experiences.
-            Company: {company}
-            Role: {role}
-            Document Category:
-            {doc.get("category", "unknown")}
-            Document Title:
-            {doc.get("title", "unknown")}
-            Source URL:
-            {doc.get("url", "unknown")}
-            Content:
-            {doc.get("content", "")}
-            Respond ONLY with valid JSON:
-            {{
-            "skills": [],
-            "technologies": [],
-            "topics": [],
-            "responsibilities": [],
-            "rounds": [],
-            "behavioral_patterns": [],
-            "difficulty": "Easy | Medium | Hard",
-            "key_insights": []
-            }}
-        """
-
-        response = self.llm.invoke(prompt)
-        raw = response.content.strip()
-
-        if raw.startswith("```"):
-            raw = raw.replace("```json", "")
-            raw = raw.replace("```", "")
-            raw = raw.strip()
-
+        prompt = EXTRACTOR_PROMPT.format(
+            company=company,
+            role=role,
+            doc=doc,
+            category=doc.get("category", "unknown"),
+            title=doc.get("title", "unknown"),
+            url=doc.get("url", "unknown"),
+            content=doc.get("content", "")
+        )
+        
         try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
-            print("Failed to parse extraction JSON")
-            return {
-                "skills": [],
-                "technologies": [],
-                "topics": [],
-                "responsibilities": [],
-                "rounds": [],
-                "behavioral_patterns": [],
-                "difficulty": "Medium",
-                "key_insights": [],
-            }
-    
+            response = self.llm.invoke(prompt)
+            raw = response.content.strip()
+            print("RAW RESPONSE:")
+            print(raw[:500])
+            start = raw.find("{")
+            end = raw.rfind("}")
+            if start == -1 or end == -1:
+                raise ValueError(
+                    f"No JSON found in response:\n{raw[:500]}"
+                )
+            json_text = raw[start:end + 1]
+            data = json.loads(json_text)
+            validated = ExtractionResult(**data)
+            return validated.model_dump()
+        except Exception as e:
+            print(f"Error occurred while invoking LLM: {e}")
+            return ExtractionResult().model_dump()
+
     def merge_results(self,partials:list[dict[str,Any]])->dict[str,Any]:
         skills = set()
         technologies = set()
@@ -92,24 +74,48 @@ class ExtractorAgent:
         rounds = set()
         behavioral_patterns = set()
         key_insights = set()
+        dsa_questions = set()
 
         difficulties = []
-        
+        print(f"Merging {len(partials)} partial extraction results")
         for result in partials:
-            skills.update(result.get("skills", []))
-            technologies.update(result.get("technologies", []))
-            topics.update(result.get("topics", []))
-            responsibilities.update(result.get("responsibilities", []))
-            rounds.update(result.get("rounds", []))
-            behavioral_patterns.update(result.get("behavioral_patterns", []))
-            key_insights.update(result.get("key_insights", []))
-            if result.get("difficulty"):
-                difficulties.append(result["difficulty"])
-
-        difficulty = "Medium"
-
-        if difficulties:
-            difficulty = max(difficulties, key=lambda d:{"Easy": 1, "Medium": 2, "Hard": 3}.get(d, 2))
+            skills.update(
+                s for s in result.get("skills", [])
+                if isinstance(s, str)
+            )
+            technologies.update(
+                t for t in result.get("technologies", [])
+                if isinstance(t, str)
+            )
+            topics.update(
+                t for t in result.get("topics", [])
+                if isinstance(t, str)
+            )
+            responsibilities.update(
+                r for r in result.get("responsibilities", [])
+                if isinstance(r, str)
+            )
+            rounds.update(
+                r for r in result.get("rounds", [])
+                if isinstance(r, str)
+            )
+            behavioral_patterns.update(
+                b for b in result.get("behavioral_patterns", [])
+                if isinstance(b, str)
+            )
+            key_insights.update(
+                k for k in result.get("key_insights", [])
+                if isinstance(k, str)
+            )
+            dsa_questions.update(
+                q for q in result.get("dsa_questions", [])
+                if isinstance(q, str)
+            )
+            d = result.get("difficulty", "Medium")
+            if isinstance(d, str):
+                d = d.strip().capitalize()
+                if d in {"Easy", "Medium", "Hard"}:
+                    difficulties.append(d)
 
         return {
             "skills": sorted(skills),
@@ -120,8 +126,11 @@ class ExtractorAgent:
             "behavioral_patterns": sorted(
                 behavioral_patterns
             ),
-            "difficulty": difficulty,
+            "difficulty": Counter(difficulties).most_common(1)[0][0] if difficulties else "Medium",
             "key_insights": sorted(
                 key_insights
             ),
+            "dsa_questions": sorted(
+                dsa_questions
+            )
         }

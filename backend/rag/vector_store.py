@@ -7,7 +7,6 @@ Handles chunking, embedding, and upserting documents into ChromaDB.
 from __future__ import annotations
 
 import hashlib
-import uuid
 from typing import Any
 
 import chromadb
@@ -55,7 +54,7 @@ class VectorStore:
     def add_document(
         self,
         text: str,
-        metadata: dict[str, str],
+        metadata: dict[str, Any],
         source_url: str = "",
     ) -> int:
         """
@@ -63,7 +62,7 @@ class VectorStore:
 
         Args:
             text: Raw text content.
-            metadata: Dict with at minimum 'company', 'role', 'source'.
+            metadata: Dict with at minimum 'company', 'role', 'source', 'category'.
             source_url: Optional URL for traceability.
 
         Returns:
@@ -78,7 +77,7 @@ class VectorStore:
             doc_id = hashlib.md5(f"{source_url}-{i}-{chunk[:50]}".encode()).hexdigest()
             ids.append(doc_id)
             documents.append(chunk)
-            metadatas.append({**metadata, "chunk_index": str(i), "source_url": source_url})
+            metadatas.append({**metadata, "chunk_index": i,"total_chunks": len(chunks), "source_url": source_url})
 
         self.collection.upsert(
             ids=ids,
