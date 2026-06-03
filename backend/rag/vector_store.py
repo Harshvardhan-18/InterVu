@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import hashlib
 from typing import Any
-
 import chromadb
 from chromadb import Collection
 
@@ -74,7 +73,7 @@ class VectorStore:
         metadatas = []
 
         for i, chunk in enumerate(chunks):
-            doc_id = hashlib.md5(f"{source_url}-{i}-{chunk[:50]}".encode()).hexdigest()
+            doc_id = hashlib.md5(f"{source_url}-{i}".encode()).hexdigest()
             ids.append(doc_id)
             documents.append(chunk)
             metadatas.append({**metadata, "chunk_index": i,"total_chunks": len(chunks), "source_url": source_url})
@@ -92,3 +91,19 @@ class VectorStore:
             "name": self.collection.name,
             "count": self.collection.count(),
         }
+    
+    def search(self, query: str, top_k: int = 5,filters: dict | None = None):
+        where=None
+        if filters:
+            where = {
+                "$and": [
+                {k:v}
+                for k,v in filters.items()
+            ]
+        }
+        return self.collection.query(
+            query_texts=[query],
+            n_results=top_k,
+            where=where
+           
+        )

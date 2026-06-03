@@ -2,7 +2,7 @@
 Embeddings
 ----------
 Returns a ChromaDB-compatible embedding function.
-Defaults to sentence-transformers/all-MiniLM-L6-v2 (local, free).
+Defaults to sentence-transformers/BAAI/bge-small-en-v1.5 (local, free).
 Can be swapped to Google text-embedding-004 via env var.
 """
 
@@ -18,7 +18,7 @@ def get_embedding_function() -> EmbeddingFunction:
     Return the appropriate embedding function based on environment.
 
     Set EMBEDDING_PROVIDER=google to use text-embedding-004.
-    Defaults to sentence-transformers/all-MiniLM-L6-v2.
+    Defaults to sentence-transformers/BAAI/bge-small-en-v1.5.
     """
     provider = os.getenv("EMBEDDING_PROVIDER", "sentence-transformers")
 
@@ -34,5 +34,5 @@ def get_embedding_function() -> EmbeddingFunction:
     from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 
     return SentenceTransformerEmbeddingFunction(
-        model_name="all-MiniLM-L6-v2"
+        model_name="BAAI/bge-small-en-v1.5"
     )
