@@ -9,9 +9,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.interview import router as interview_router
-from .api.report import router as report_router
-from .db.postgres import create_tables
+from api.interview import router as interview_router
+from api.report import router as report_router
+from db.postgres import create_tables
 
 
 @asynccontextmanager

@@ -11,40 +11,14 @@ Endpoints:
 from __future__ import annotations
 
 from typing import Any
-
+from research import get_research_profile,save_research_profile
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pipeline import ResearchPipeline, run
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from ..db.postgres import get_db, Interview, Question, Response
+from schemas.interiew import StartInterviewRequest, StartInterviewResponse, SubmitAnswerRequest, SubmitAnswerResponse
+from db.postgres import get_db, Interview, Question, Response
 
 router = APIRouter(prefix="/api/interviews", tags=["interviews"])
-
-
-# ── Request / Response Schemas ─────────────────────────────────────────────────
-
-class StartInterviewRequest(BaseModel):
-    user_id: int
-    company: str
-    role: str
-    difficulty: str = "medium"
-
-
-class StartInterviewResponse(BaseModel):
-    interview_id: int
-    first_question: str
-    blueprint: dict[str, Any]
-
-
-class SubmitAnswerRequest(BaseModel):
-    answer: str
-
-
-class SubmitAnswerResponse(BaseModel):
-    evaluation: dict[str, Any]
-    next_question: str | None
-    interview_complete: bool
-
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
 
@@ -57,9 +31,33 @@ async def start_interview(
     Launch research pipeline → build knowledge base → generate blueprint
     → return first question.
     """
-    # TODO: 1. Run TavilySearch + FirecrawlAgent
-    # TODO: 2. Run ExtractorAgent on results
-    # TODO: 3. Upsert into VectorStore
+    #Checking if research profile already exists for the role
+    company=body.company
+    role=body.role
+    user_difficulty=body.difficulty
+    
+    profile = await get_research_profile(db, company, role)
+
+    if profile:
+        print("Research profile found in DB, skipping pipeline.")
+        extracted={
+            "skills": profile.skills,
+            "technologies": profile.technologies,
+            "topics": profile.topics,
+            "responsibilities": profile.responsibilities,
+            "rounds": profile.rounds,
+            "behavioral_patterns": profile.behavioral_patterns,
+            "key_insights": profile.key_insights,
+            "dsa_questions": profile.dsa_questions,
+            "difficulty": profile.difficulty,
+        }
+    else:
+        print("No research profile found, running pipeline.")
+        pipeline=ResearchPipeline()
+        result = await pipeline.run(company, role)
+        extracted = result["extracted"]
+        # Save the new research profile to the database
+        await save_research_profile(db, company, role, extracted)
     # TODO: 4. Generate blueprint via BlueprintGenerator
     # TODO: 5. Run InterviewerAgent.generate_question()
 
