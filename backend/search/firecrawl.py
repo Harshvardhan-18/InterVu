@@ -6,7 +6,7 @@ discovered during the Tavily research phase.
 """
 
 from __future__ import annotations
-
+import asyncio
 import os
 from typing import Any
 from dotenv import load_dotenv
@@ -22,7 +22,7 @@ class FirecrawlAgent:
         if not api_key:
             raise ValueError("Firecrawl API key not found")
 
-    def scrape_url(self, url: str) -> dict[str, Any]:
+    async def scrape_url(self, url: str) -> dict[str, Any]:
         """
         Scrape a single URL and return clean markdown content.
 
@@ -33,7 +33,8 @@ class FirecrawlAgent:
             {url, content, title, metadata}
         """
         try:
-            result = self.app.scrape(
+            result = await asyncio.to_thread(
+                self.app.scrape,
                 url,
                 formats=["markdown"]
             )
@@ -66,7 +67,7 @@ class FirecrawlAgent:
 
         return "\n".join(cleaned)
 
-    def scrape_urls(self, urls: list[str]) -> list[dict[str, Any]]:
+    async def scrape_urls(self, urls: list[str]) -> list[dict[str, Any]]:
         """
         Scrape multiple URLs, filtering out failed/empty results.
 
@@ -76,12 +77,11 @@ class FirecrawlAgent:
         Returns:
             List of {url, content, title} dicts with non-empty content.
         """
-        results = []
-        for url in urls:
-            result = self.scrape_url(url)
-            if len(result.get("content", "")) > 200:
-                results.append(result)
-        return results
+        if not urls:
+            return []
+        results= await asyncio.gather(*(self.scrape_url(url) for url in urls))
+        return [r for r in results if r.get("content_length", 0) > 200]
+        
     
     # IGNORING CRAWL_SITE METHOD FOR NOW - MAYBE ADD BACK LATER IF WE WANT TO CRAWL COMPANY BLOGS ETC.
     # def crawl_site(self, url: str, max_pages: int = 5) -> list[dict[str, Any]]:

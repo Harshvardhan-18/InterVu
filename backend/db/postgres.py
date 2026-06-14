@@ -54,7 +54,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     interviews = relationship("Interview", back_populates="user")
 
@@ -69,7 +69,7 @@ class Interview(Base):
     difficulty = Column(String(50), default="medium")
     blueprint = Column(JSON, nullable=True)
     status = Column(String(50), default="in_progress")  # in_progress | completed
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="interviews")
     questions = relationship("Question", back_populates="interview")
@@ -99,7 +99,7 @@ class Response(Base):
     score = Column(Float, nullable=True)
     evaluation = Column(JSON, nullable=True)
     feedback = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda:datetime.now(timezone.utc))
 
     question = relationship("Question", back_populates="response")
 
@@ -114,7 +114,6 @@ class ResearchProfile(Base):
     skills = Column(JSON, nullable=False, default=list)
     technologies = Column(JSON, nullable=False, default=list)
     topics = Column(JSON, nullable=False, default=list)
-    responsibilities = Column(JSON, nullable=False, default=list)
     rounds = Column(JSON, nullable=False, default=list)
     behavioral_patterns = Column(JSON, nullable=False, default=list)
     key_insights = Column(JSON, nullable=False, default=list)
@@ -131,7 +130,7 @@ class Report(Base):
     interview_id = Column(Integer, ForeignKey("interviews.id"), unique=True, nullable=False)
     overall_score = Column(Float, nullable=True)
     report_json = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda:datetime.now(timezone.utc))
 
     interview = relationship("Interview", back_populates="report")
 

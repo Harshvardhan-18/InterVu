@@ -10,6 +10,7 @@ from collections import Counter
 from typing import Any
 import json
 import os
+import asyncio
 from prompts.extractor import EXTRACTOR_PROMPT
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
@@ -22,21 +23,13 @@ class ExtractorAgent:
     def __init__(self, model: str = "llama-3.3-70b-versatile") -> None:
         self.llm = ChatGroq(model=model,api_key=os.getenv("GROQ_API_KEY"))
 
-    def extract(self, company: str, role: str, raw_content: list[dict[str, Any]]) -> dict[str, Any]:
-        partials = []
-        for d in raw_content:
-            try:
-                partial=self.extract_doc(
-                    company=company,
-                    role=role,
-                    doc=d
-                )
-                partials.append(partial)
-            except Exception as e:
-                print(f"[extractor] Error extracting from doc {d.get('url', 'unknown')}: {e}")
-        return self.merge_results(partials)
+    async def extract(self, company: str, role: str, raw_content: list[dict[str, Any]]) -> dict[str, Any]:
+        partials = await asyncio.gather(
+            *(self.extract_doc(company, role, d) for d in raw_content)
+        )
+        return self.merge_results(list(partials))
     
-    def extract_doc(self,company:str,role:str,doc:dict[str,Any]) -> dict[str,Any]:
+    async def extract_doc(self,company:str,role:str,doc:dict[str,Any]) -> dict[str,Any]:
         prompt = EXTRACTOR_PROMPT.format(
             company=company,
             role=role,
@@ -48,7 +41,7 @@ class ExtractorAgent:
         )
         
         try:
-            response = self.llm.invoke(prompt)
+            response = await self.llm.ainvoke(prompt)
             raw = response.content.strip()
             print(f"[extractor] RAW RESPONSE:")
             print(raw[:500])
@@ -70,7 +63,6 @@ class ExtractorAgent:
         skills = set()
         technologies = set()
         topics = set()
-        responsibilities = set()
         rounds = set()
         behavioral_patterns = set()
         key_insights = set()
@@ -90,10 +82,6 @@ class ExtractorAgent:
             topics.update(
                 t for t in result.get("topics", [])
                 if isinstance(t, str)
-            )
-            responsibilities.update(
-                r for r in result.get("responsibilities", [])
-                if isinstance(r, str)
             )
             rounds.update(
                 r for r in result.get("rounds", [])
@@ -121,7 +109,6 @@ class ExtractorAgent:
             "skills": sorted(skills),
             "technologies": sorted(technologies),
             "topics": sorted(topics),
-            "responsibilities": sorted(responsibilities),
             "rounds": sorted(rounds),
             "behavioral_patterns": sorted(
                 behavioral_patterns

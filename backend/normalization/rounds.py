@@ -1,31 +1,31 @@
-ROUND_MAP = {
-    "Onsites": "Onsite Interviews",
-    "Onsite Round": "Onsite Interviews",
-    "Onsite Interview": "Onsite Interviews",
+import re
 
-    "Phone Screen": "Technical Phone Screen",
-    "Technical Phone Interview": "Technical Phone Screen",
-
-    "Technical Round": "Technical Interview",
-    "Coding Round": "Technical Interview",
-
-    "Googleyness": "Googleyness Round",
-    "Googlyness": "Googleyness Round",
-
-    "HR Round": "HR Interview",
+CANONICAL_ROUNDS = {
+    "Online Assessment": ["online assessment", "google oa", r"^oa$"],
+    "Technical Phone Screen": ["phone screen", "telephonic", "telephone", "screening call", "screening round"],
+    "Onsite Interviews": ["onsite", "on-site", "on site"],
+    "Technical Interview": [r"^round \d", "coding round", "technical round", "technical interview"],
+    "Googleyness Round": ["googleyness", "googlyness", "googliness"],
+    "HR Interview": ["hr round", "hr interview"],
+    "DSA Rounds": ["dsa round"],
+    "Team Matching Round": ["team match"],
+    "Fitment Call": ["fitment"],
+    "Hiring Committee Approval": ["hiring committee"],
 }
 
 def normalize_rounds(rounds: list[str]) -> list[str]:
-    normalized = []
-
+    normalized = set()
     for round_name in rounds:
-        round_name = round_name.strip()
-
-        if not round_name:
+        rn = round_name.strip()
+        if not rn:
             continue
-
-        normalized.append(
-            ROUND_MAP.get(round_name, round_name)
-        )
-
-    return sorted(set(normalized))
+        rn_lower = rn.lower()
+        matched = False
+        for canonical, patterns in CANONICAL_ROUNDS.items():
+            if any(re.search(p, rn_lower) for p in patterns):
+                normalized.add(canonical)
+                matched = True
+                break
+        if not matched:
+            normalized.add(rn)  # keep unrecognized rounds as-is
+    return sorted(normalized)

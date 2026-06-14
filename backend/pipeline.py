@@ -18,6 +18,7 @@ from agents.extractor import ExtractorAgent
 from rag.vector_store import VectorStore
 from normalization.normalizer import ExtractionNormalizer
 from search.anakin import AnakinAgent
+import asyncio
 
 
 class ResearchPipeline:
@@ -57,7 +58,7 @@ class ResearchPipeline:
         ranked.sort(key=lambda x: x["relevance_score"],reverse=True)
         return ranked
 
-    def run(self, company: str, role: str) -> dict[str, Any]:
+    async def run(self, company: str, role: str) -> dict[str, Any]:
         """
             Run the end-to-end research pipeline.
 
@@ -75,7 +76,7 @@ class ResearchPipeline:
                 behavioral patterns, difficulty, and key insights.
         """
         # 1. Search
-        search_results = self.tavily.research(company, role)
+        search_results = await self.tavily.research(company, role)
 
         ranked_results = self.rank_results(search_results)
 
@@ -120,8 +121,10 @@ class ResearchPipeline:
                 top_urls.append(r["url"])
 
         # 2. Scrape non-Reddit URLs via Firecrawl; Reddit URLs via Anakin
-        scraped = self.firecrawl.scrape_urls(top_urls)
-        reddit_scraped = self.anakin.scrape_urls(reddit_urls)
+        scraped,reddit_scraped = await asyncio.gather(
+            self.firecrawl.scrape_urls(top_urls),
+            self.anakin.scrape_urls(reddit_urls)
+        )
 
         # Build lookup dicts keyed by URL for O(1) access
         scraped_urls = {s["url"]: s for s in scraped}
@@ -157,7 +160,7 @@ class ResearchPipeline:
                 })
 
         # 3. Extract structured knowledge
-        extracted = self.extractor.extract(company, role, all_content)
+        extracted =await self.extractor.extract(company, role, all_content)
 
         extracted = self.normalizer.normalize(extracted)
 

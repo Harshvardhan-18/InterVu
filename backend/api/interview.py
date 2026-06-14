@@ -44,7 +44,6 @@ async def start_interview(
             "skills": profile.skills,
             "technologies": profile.technologies,
             "topics": profile.topics,
-            "responsibilities": profile.responsibilities,
             "rounds": profile.rounds,
             "behavioral_patterns": profile.behavioral_patterns,
             "key_insights": profile.key_insights,

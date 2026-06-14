@@ -1,4 +1,6 @@
 import requests
+import httpx
+import asyncio
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -10,19 +12,20 @@ class AnakinAgent:
         if not self.api_key:
             raise ValueError("Anakin API key must be provided either as an argument or in the environment variable 'ANAKIN_API_KEY'.")
     
-    def scrape_urls(self, urls: list[str],max_wait_seconds: int = 120) -> list[dict]:
+    async def scrape_urls(self, urls: list[str],max_wait_seconds: int = 120) -> list[dict]:
         if not urls:
             return []
-        response = requests.post(
-            'https://api.anakin.io/v1/url-scraper/batch',
-            headers={'X-API-Key': self.api_key},
-            json={
-                'urls': urls,
-                'country':'in',
+        
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                'https://api.anakin.io/v1/url-scraper/batch',
+                headers={'X-API-Key': self.api_key},
+                json={
+                    'urls': urls,
+                    'country':'in',
                 'useBrowser': False,
                 'generateJson': True
-            },
-            timeout=30
+            }
         ) 
         response.raise_for_status()
         batch_id=response.json().get('jobId')
@@ -44,17 +47,17 @@ class AnakinAgent:
                         json_data=item['generatedJson']['data']
                         scraped_data.append({
                             "url": item['url'],
-                            "title": json_data['title'],
-                            "content": json_data['content'],
+                            "title": json_data.get('title', ''),
+                            "content": json_data.get('content', ''),
                         })
                     else:
                         print(f"[anakin] Scraping failed for : {item['url']} with status: {item['status']}")
                 break
             if data['status'] in {"failed","error"}:
-                raise Exception(f"[anakin] API request failed")
+                raise Exception(f"[anakin] API request failed for {batch_id}")
             if elapsed >= max_wait_seconds:
                 raise TimeoutError(f"[anakin] API request timed out after {max_wait_seconds} seconds")
-            time.sleep(poll_interval)
+            await asyncio.sleep(poll_interval)
             elapsed += poll_interval
         return scraped_data
 

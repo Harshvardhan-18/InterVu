@@ -7,6 +7,7 @@ Generates and executes search queries to gather company/role information.
 from __future__ import annotations
 
 import os
+import asyncio
 from typing import Any
 from dotenv import load_dotenv
 from tavily import TavilyClient
@@ -61,7 +62,7 @@ class TavilySearch:
         ],
     }
 
-    def search(self, query: str, max_results: int = 5) -> list[dict[str, Any]]:
+    async def search(self, query: str, max_results: int = 5) -> list[dict[str, Any]]:
         """
         Execute a single Tavily search query.
 
@@ -73,7 +74,8 @@ class TavilySearch:
             List of {url, title, content, score} dicts.
         """
         try:
-            response = self.client.search(
+            response = await asyncio.to_thread(
+                self.client.search,
                 query=query,
                 max_results=max_results,
                 search_depth="advanced",
@@ -93,7 +95,7 @@ class TavilySearch:
             for r in response.get("results", [])
         ]
 
-    def research(self, company: str, role: str) -> list[dict[str, Any]]:
+    async def research(self, company: str, role: str) -> list[dict[str, Any]]:
         """
         Run all generated queries and aggregate results.
 
@@ -112,22 +114,28 @@ class TavilySearch:
             ]
         """
         query_groups = self.generate_queries(company, role)
+        tasks=[]
+        task_meta=[]
+        for category,queries in query_groups.items():
+            for query in queries:
+                tasks.append(self.search(query))
+                task_meta.append((category,query))
+        
+        all_results=await asyncio.gather(*tasks)
         seen_urls: set[str] = set()
         results: list[dict[str, Any]] = []
 
-        for category,queries in query_groups.items():
-            for query in queries:
-                search_results=self.search(query)
-                for item in search_results:
-                    url=item["url"]
-                    if not url or url in seen_urls:
+        for (category,queries), search_results in zip(task_meta, all_results):
+            for item in search_results:
+                url=item["url"]
+                if not url or url in seen_urls:
                         continue
-                    seen_urls.add(url)
-                    source=urlparse(url).netloc.replace("www.","")
-                    results.append({
-                        **item,
-                        "category": category,
-                        "query": query,
-                        "source":source
-                    })
+                seen_urls.add(url)
+                source=urlparse(url).netloc.replace("www.","")
+                results.append({
+                    **item,
+                    "category": category,
+                    "query": query,
+                    "source":source
+                })
         return results

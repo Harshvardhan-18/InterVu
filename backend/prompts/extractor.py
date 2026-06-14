@@ -28,7 +28,6 @@ EXTRACTOR_PROMPT="""
         - skills: Specific skills required for the role (e.g. "Data Structures", "System Design", "Behavioral").
         - technologies: Programming languages, tools, frameworks (e.g. "Python", "AWS", "Docker").
         - topics: High-level interview subjects (e.g. "Operating Systems", "System Design", "Networking", "Graphs", "Trees").
-        - responsibilities: Key job responsibilities mentioned in the description (e.g. "Design scalable systems", "Lead a team of engineers").
         - rounds: Distinct interview rounds or stages (e.g. "Online Assessment  ", "Technical Interview", "HR Interview").
         - behavioral_patterns: Common behavioral themes or leadership qualities (e.g. "Leadership", "Teamwork", "Problem-solving").
         - difficulty: Overall difficulty level of the interview process (Easy, Medium, Hard).
@@ -39,7 +38,6 @@ EXTRACTOR_PROMPT="""
         "skills": ["Data Structures", "Algorithms"],
         "technologies": ["Java", "Python"],
         "topics": ["Graphs", "Trees"],
-        "responsibilities": ["Design scalable systems"],
         "rounds": ["Online Assessment", "Technical Interview"],
         "behavioral_patterns": ["Leadership"],
         "difficulty": "Hard",
@@ -52,7 +50,6 @@ EXTRACTOR_PROMPT="""
         Focus on:
         - skills
         - technologies
-        - responsibilities
 
         For category = "interview_experiences":
         Focus on:
@@ -67,6 +64,7 @@ EXTRACTOR_PROMPT="""
         - rounds
         - difficulty
         - key_insights
+
         IMPORTANT:
         Do not include <think> tags.
         Do not explain your reasoning.
