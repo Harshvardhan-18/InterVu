@@ -17,6 +17,7 @@ from search.firecrawl import FirecrawlAgent
 from agents.extractor import ExtractorAgent
 from rag.vector_store import VectorStore
 from normalization.normalizer import ExtractionNormalizer
+from search.anakin import AnakinAgent
 
 
 class ResearchPipeline:
@@ -26,18 +27,19 @@ class ResearchPipeline:
         self.tavily = TavilySearch()
         self.firecrawl = FirecrawlAgent()
         self.extractor = ExtractorAgent()
-        self.vector_store = VectorStore()
+        # self.vector_store = VectorStore()
         self.normalizer = ExtractionNormalizer()
+        self.anakin=AnakinAgent()
 
     def rank_results(self,results:list[dict[str,Any]]) -> list[dict[str,Any]]:
         ranked = []
 
-        # source_bonus = {
-        #     "reddit.com": 2,
-        #     "leetcode.com": 2,
-        #     "geeksforgeeks.org": 2,
-        #     "glassdoor.com": 1,
-        # }
+        source_bonus = {
+            "reddit.com": 2,
+            "leetcode.com": 2,
+            "geeksforgeeks.org": 2,
+            "glassdoor.com": 1,
+        }
 
         category_bonus = {
             "interview_experiences": 3,
@@ -48,7 +50,7 @@ class ResearchPipeline:
 
         for r in results:
             score=r.get("score",0)
-            # score+=source_bonus.get(r.get("source", ""),0)
+            score+=source_bonus.get(r.get("source", ""),0)
             score+=category_bonus.get(r.get("category", ""),0)
             ranked.append({**r,"relevance_score":score})
 
@@ -96,9 +98,9 @@ class ResearchPipeline:
 
         selected_results = interview_results[:4] + process_results[:2] + job_results[:2]
 
-        print(f"Selected {len(selected_results)} results for scraping:")
+        print(f"[pipeline] Selected {len(selected_results)} results for scraping:")
         for r in selected_results:
-            print(f"- {r['url']} (category: {r['category']}, relevance_score: {r['relevance_score']})")
+            print(f"[pipeline] - {r['url']} (category: {r['category']}, relevance_score: {r['relevance_score']})")
 
         if(len(selected_results)<8):
             used_urls = set(r["url"] for r in selected_results)
@@ -109,32 +111,50 @@ class ResearchPipeline:
 
                 if len(selected_results) >= 8:
                     break
+        reddit_urls=[]
+        top_urls=[]
+        for r in selected_results:
+            if r["source"]=="reddit.com":
+                reddit_urls.append(r["url"])
+            else:
+                top_urls.append(r["url"])
 
-        top_urls=[
-            r["url"]
-            for r in selected_results
-            if r["source"] != "reddit.com"  # Exclude Reddit links due to scraping difficulties
-        ]
-
-        # 2. Scrape top URLs (limit to 8 to avoid rate limits)
+        # 2. Scrape non-Reddit URLs via Firecrawl; Reddit URLs via Anakin
         scraped = self.firecrawl.scrape_urls(top_urls)
+        reddit_scraped = self.anakin.scrape_urls(reddit_urls)
 
-        # Combine snippets (for URLs that failed scraping) with full content
-        all_content: list[dict[str, str]] = []
+        # Build lookup dicts keyed by URL for O(1) access
         scraped_urls = {s["url"]: s for s in scraped}
+        reddit_scraped_urls = {s["url"]: s for s in reddit_scraped}
+
+        # Merge full scraped content back into the ranked results, keeping JSON structure uniform.
+        # If a URL failed to scrape (either scraper), fall back to the Tavily snippet so the
+        # extractor still gets some signal rather than silently dropping the result.
+        all_content: list[dict[str, str]] = []
         for r in selected_results:
             if r["source"] == "reddit.com":
-                all_content.append(r)
-                continue
-            if r["url"] not in scraped_urls:
-               continue
-            full = scraped_urls[r["url"]]
-            all_content.append({
-                **r,
-                "title":full["title"],
-                "content": full["content"],
-                "metadata": full["metadata"]
-            })
+                full = reddit_scraped_urls.get(r["url"])
+                if full and full.get("content"):
+                    all_content.append({
+                        **r,
+                        "title": full.get("title", r.get("title", "")),
+                        "content": full["content"],
+                        "metadata": full.get("metadata", {}),
+                    })
+                else:
+                    # Anakin failed for this URL — fall back to Tavily snippet
+                    print(f"[pipeline] Anakin scrape failed for {r['url']}, using Tavily snippet")
+                    all_content.append(r)
+            else:
+                full = scraped_urls.get(r["url"])
+                if not full:
+                    continue  # Firecrawl failed and no snippet to fall back to
+                all_content.append({
+                    **r,
+                    "title": full["title"],
+                    "content": full["content"],
+                    "metadata": full["metadata"],
+                })
 
         # 3. Extract structured knowledge
         extracted = self.extractor.extract(company, role, all_content)
@@ -142,22 +162,22 @@ class ResearchPipeline:
         extracted = self.normalizer.normalize(extracted)
 
         # 4. Embed and store in ChromaDB
-        chunks_added = 0
-        for item in all_content:
-            if item.get("content"):
-                chunks_added += self.vector_store.add_document(
-                    text=item["content"],
-                    metadata={
-                        "company": company,
-                        "role": role,
-                        "source": item.get("source", ""),
-                        "category": item.get("category", ""),    
-                    },
-                    source_url=item.get("url", ""),
-                )
+        # chunks_added = 0
+        # for item in all_content:
+        #     if item.get("content"):
+        #         chunks_added += self.vector_store.add_document(
+        #             text=item["content"],
+        #             metadata={
+        #                 "company": company,
+        #                 "role": role,
+        #                 "source": item.get("source", ""),
+        #                 "category": item.get("category", ""),    
+        #             },
+        #             source_url=item.get("url", ""),
+        #         )
 
         return {
             "extracted": extracted,
-            "chunks_added": chunks_added,
+            # "chunks_added": chunks_added,
             "urls_processed": len(all_content),
         }

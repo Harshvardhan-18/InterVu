@@ -1,7 +1,5 @@
 from search.firecrawl import FirecrawlAgent
-import os
 from firecrawl import FirecrawlApp
-import inspect
 agent = FirecrawlAgent()
 
 result = agent.scrape_url(

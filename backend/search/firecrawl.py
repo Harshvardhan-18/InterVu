@@ -40,7 +40,7 @@ class FirecrawlAgent:
             content=self.clean_content(result.markdown)
             content=content[:6000]  # Truncate to 6k chars to avoid huge docs
             metadata=(dict(result.metadata) if result.metadata else {})
-            print(f"Scraped {url} (content length: {len(content)})")
+            print(f"[firecrawl] Scraped {url} (content length: {len(content)})")
             return{
                 "url": url,
                 "content": content,
@@ -49,7 +49,7 @@ class FirecrawlAgent:
                 "metadata": metadata
             }
         except Exception as e:
-            print(f"Error scraping {url}: {e}")
+            print(f"[firecrawl] Error scraping {url}: {e}")
             return {"url": url, "content": "", "title": "","content_length": 0, "error": str(e)}
         
     def clean_content(self, text: str) -> str:

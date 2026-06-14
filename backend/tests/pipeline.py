@@ -7,11 +7,11 @@ result=pp.run(
     role="SDE I"
 )
 
-print(result["extracted"])
+print(result)
 
-results=pp.vector_store.search(
-    query="What are the most common interview questions for Google SDE I roles?",
-    filters={"company": "Google", "role": "SDE I"},
-)
+# results=pp.vector_store.search(
+#     query="What are the most common interview questions for Google SDE I roles?",
+#     filters={"company": "Google", "role": "SDE I"},
+# )
 
-print(results)
+# print(results)

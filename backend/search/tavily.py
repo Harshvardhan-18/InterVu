@@ -80,9 +80,9 @@ class TavilySearch:
                 include_answer=False,
             )
         except Exception as e:
-            print(f"Tavily search error for query '{query}': {e}")
+            print(f"[tavily] Search error for query '{query}': {e}")
             return []
-        print(f"Tavily search for query '{query}' returned {len(response.get('results', []))} results")
+        print(f"[tavily] Search for query '{query}' returned {len(response.get('results', []))} results")
         return [
             {
                 "url": r.get("url", ""),

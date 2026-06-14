@@ -33,7 +33,7 @@ class ExtractorAgent:
                 )
                 partials.append(partial)
             except Exception as e:
-                print(f"Error extracting from doc {d.get('url', 'unknown')}: {e}")
+                print(f"[extractor] Error extracting from doc {d.get('url', 'unknown')}: {e}")
         return self.merge_results(partials)
     
     def extract_doc(self,company:str,role:str,doc:dict[str,Any]) -> dict[str,Any]:
@@ -50,20 +50,20 @@ class ExtractorAgent:
         try:
             response = self.llm.invoke(prompt)
             raw = response.content.strip()
-            print("RAW RESPONSE:")
+            print(f"[extractor] RAW RESPONSE:")
             print(raw[:500])
             start = raw.find("{")
             end = raw.rfind("}")
             if start == -1 or end == -1:
                 raise ValueError(
-                    f"No JSON found in response:\n{raw[:500]}"
+                    f"[extractor] No JSON found in response:\n{raw[:500]}"
                 )
             json_text = raw[start:end + 1]
             data = json.loads(json_text)
             validated = ExtractionResult(**data)
             return validated.model_dump()
         except Exception as e:
-            print(f"Error occurred while invoking LLM: {e}")
+            print(f"[extractor] Error occurred while invoking LLM: {e}")
             return ExtractionResult().model_dump()
 
     def merge_results(self,partials:list[dict[str,Any]])->dict[str,Any]:
@@ -77,7 +77,7 @@ class ExtractorAgent:
         dsa_questions = set()
 
         difficulties = []
-        print(f"Merging {len(partials)} partial extraction results")
+        print(f"[extractor] Merging {len(partials)} partial extraction results")
         for result in partials:
             skills.update(
                 s for s in result.get("skills", [])
