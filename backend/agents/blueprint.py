@@ -8,29 +8,34 @@ interview plan stored in PostgreSQL.
 from __future__ import annotations
 
 from typing import Any
-
-from langchain_google_genai import ChatGoogleGenerativeAI
+from pydantic import ValidationError
+from schemas.blueprint import Blueprint, BlueprintSection
+from langchain_groq import ChatGroq
 import json
-
+from prompts.blueprint import BLUEPRINT_PROMPT
+import asyncio
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 SECTION_DEFAULTS = {
     "easy": [
-        {"name": "Screening", "questions": 2},
-        {"name": "Coding", "questions": 2},
-        {"name": "Behavioral", "questions": 2},
+        {"name": "Screening", "type": "screening", "questions": 2, "focus_areas": []},
+        {"name": "Coding", "type": "coding", "questions": 2, "focus_areas": []},
+        {"name": "Behavioral", "type": "behavioral", "questions": 2, "focus_areas": []},
     ],
     "medium": [
-        {"name": "Screening", "questions": 2},
-        {"name": "Coding", "questions": 3},
-        {"name": "Role Specific", "questions": 3},
-        {"name": "Behavioral", "questions": 2},
+        {"name": "Screening", "type": "screening", "questions": 2, "focus_areas": []},
+        {"name": "Coding", "type": "coding", "questions": 3, "focus_areas": []},
+        {"name": "Role Specific", "type": "technical", "questions": 3, "focus_areas": []},
+        {"name": "Behavioral", "type": "behavioral", "questions": 2, "focus_areas": []},
     ],
     "hard": [
-        {"name": "Screening", "questions": 2},
-        {"name": "Coding", "questions": 4},
-        {"name": "Role Specific", "questions": 4},
-        {"name": "System Design", "questions": 2},
-        {"name": "Behavioral", "questions": 2},
+        {"name": "Screening", "type": "screening", "questions": 2, "focus_areas": []},
+        {"name": "Coding", "type": "coding", "questions": 4, "focus_areas": []},
+        {"name": "Role Specific", "type": "technical", "questions": 4, "focus_areas": []},
+        {"name": "System Design", "type": "system_design", "questions": 2, "focus_areas": []},
+        {"name": "Behavioral", "type": "behavioral", "questions": 2, "focus_areas": []},
     ],
 }
 
@@ -38,15 +43,21 @@ SECTION_DEFAULTS = {
 class BlueprintGenerator:
     """Generates a structured interview blueprint from extracted knowledge."""
 
-    def __init__(self, model: str = "gemini-2.5-flash-preview-05-20") -> None:
-        self.llm = ChatGoogleGenerativeAI(model=model)
-
-    def generate(
+    def __init__(self, model: str = "llama-3.3-70b-versatile") -> None:
+        self.llm = ChatGroq(model=model,api_key=os.getenv("GROQ_API_KEY"))
+    
+    def _fallback(self,difficulty:str)->dict[str,Any]:
+        sections= SECTION_DEFAULTS.get(difficulty, SECTION_DEFAULTS["medium"])
+        return {"sections":sections}
+    
+    async def generate(
         self,
         company: str,
         role: str,
         skills: list[str],
+        topics: list[str],
         rounds: list[str],
+        dsa_questions: list[str],
         difficulty: str,
     ) -> dict[str, Any]:
         """
@@ -56,47 +67,39 @@ class BlueprintGenerator:
             company: Target company.
             role: Target role.
             skills: Extracted required skills.
+            topics: Extracted interview topics.
             rounds: Extracted interview rounds.
-            difficulty: Estimated difficulty (easy | medium | hard).
+            dsa_questions: Extracted DSA questions/patterns.
+            difficulty: Estimated difficulty (Easy | Medium | Hard).
 
         Returns:
-            Blueprint dict with sections and question counts.
+            Blueprint dict with sections,types, question counts and focus areas.
         """
         difficulty = difficulty.lower()
-        default_sections = SECTION_DEFAULTS.get(difficulty, SECTION_DEFAULTS["medium"])
 
-        prompt = f"""You are designing an interview plan for {role} at {company}.
-
-Required Skills: {', '.join(skills)}
-Interview Rounds: {', '.join(rounds)}
-Difficulty: {difficulty}
-
-Generate a structured interview blueprint. Respond ONLY with valid JSON:
-{{
-  "interview_type": "technical" | "behavioral" | "mixed",
-  "estimated_duration_minutes": <int>,
-  "sections": [
-    {{
-      "name": "<section name>",
-      "type": "coding" | "behavioral" | "technical" | "system_design" | "screening",
-      "questions": <int 1-5>,
-      "focus_areas": ["...", "..."]
-    }}
-  ]
-}}"""
-
+        prompt = BLUEPRINT_PROMPT.format(
+            company=company,
+            role=role,
+            skills=", ".join(skills),
+            topics=", ".join(topics),      
+            rounds=", ".join(rounds),
+            dsa_questions=", ".join(dsa_questions),
+            difficulty=difficulty
+        )
         try:
-            response = self.llm.invoke(prompt)
+            response = await self.llm.ainvoke(prompt)
             raw = response.content.strip()
-            if raw.startswith("```"):
-                raw = raw.split("```")[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-            return json.loads(raw)
-        except Exception:
+            start=raw.find("{")
+            end=raw.rfind("}")
+            if start == -1 or end == -1:
+                raise ValueError(f"No JSON found in response:\n{raw[:500]}")
+            data = json.loads(raw[start:end+1])
+            validated = Blueprint(**data)  # Validate structure with Pydantic
+            return validated.model_dump()
+        except (ValidationError, json.JSONDecodeError, ValueError) as e:
+            print(f"Error generating blueprint: {e}")
+            return self._fallback(difficulty)
+        except Exception as e:
             # Fallback to defaults
-            return {
-                "interview_type": "mixed",
-                "estimated_duration_minutes": 60,
-                "sections": default_sections,
-            }
+            print(f"Unexpected error during blueprint generation, using fallback: {e}")
+            return self._fallback(difficulty)

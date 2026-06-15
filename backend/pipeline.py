@@ -28,7 +28,7 @@ class ResearchPipeline:
         self.tavily = TavilySearch()
         self.firecrawl = FirecrawlAgent()
         self.extractor = ExtractorAgent()
-        # self.vector_store = VectorStore()
+        self.vector_store = VectorStore()
         self.normalizer = ExtractionNormalizer()
         self.anakin=AnakinAgent()
 
@@ -165,22 +165,22 @@ class ResearchPipeline:
         extracted = self.normalizer.normalize(extracted)
 
         # 4. Embed and store in ChromaDB
-        # chunks_added = 0
-        # for item in all_content:
-        #     if item.get("content"):
-        #         chunks_added += self.vector_store.add_document(
-        #             text=item["content"],
-        #             metadata={
-        #                 "company": company,
-        #                 "role": role,
-        #                 "source": item.get("source", ""),
-        #                 "category": item.get("category", ""),    
-        #             },
-        #             source_url=item.get("url", ""),
-        #         )
+        chunks_added = 0
+        for item in all_content:
+            if item.get("content"):
+                chunks_added += self.vector_store.add_document(
+                    text=item["content"],
+                    metadata={
+                        "company": company,
+                        "role": role,
+                        "source": item.get("source", ""),
+                        "category": item.get("category", ""),    
+                    },
+                    source_url=item.get("url", ""),
+                )
 
         return {
             "extracted": extracted,
-            # "chunks_added": chunks_added,
+            "chunks_added": chunks_added,
             "urls_processed": len(all_content),
         }
