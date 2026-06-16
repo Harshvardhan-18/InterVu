@@ -97,9 +97,9 @@ class BlueprintGenerator:
             validated = Blueprint(**data)  # Validate structure with Pydantic
             return validated.model_dump()
         except (ValidationError, json.JSONDecodeError, ValueError) as e:
-            print(f"Error generating blueprint: {e}")
+            print(f"[blueprint] Error generating blueprint: {e}")
             return self._fallback(difficulty)
         except Exception as e:
             # Fallback to defaults
-            print(f"Unexpected error during blueprint generation, using fallback: {e}")
+            print(f"[blueprint] Unexpected error during blueprint generation, using fallback: {e}")
             return self._fallback(difficulty)

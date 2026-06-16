@@ -62,8 +62,10 @@ class RAGRetriever:
             "n_results": self.n_results,
             "include": ["documents", "metadatas", "distances"],
         }
-        if where:
+        if len(where) == 1:
             kwargs["where"] = where
+        elif len(where) > 1:
+            kwargs["where"] = {"$and": [{k: v} for k, v in where.items()]}
 
         results = self.collection.query(**kwargs)
 
