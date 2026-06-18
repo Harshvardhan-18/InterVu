@@ -88,7 +88,7 @@ async def retrieve_context(state: InterviewState) -> dict[str, Any]:
     focus_areas = section.get("focus_areas", [])
     query = f"{state['company']} {state['role']} {' '.join(focus_areas)} interview question"
     
-    chunks = await _retriever.retrieve(query=query,company=state["company"], role=state["role"])
+    chunks = _retriever.retrieve(query=query,company=state["company"], role=state["role"])
     context = _retriever.format_context(chunks) if chunks else ""
     return {"context": context}
 
@@ -105,7 +105,6 @@ async def generate_question(state: InterviewState) -> dict[str, Any]:
     result = await interviewer.generate_question(
         company=state["company"],
         role=state["role"],
-        section=section,
         context=state["context"],
         section_name=section.get("name", ""),
         section_type=section.get("type", ""),
@@ -128,7 +127,7 @@ async def evaluate_answer(state: InterviewState) -> dict[str, Any]:
     evaluation = await evaluator.evaluate(
         company=state["company"],
         role=state["role"],
-        section_name=section_name,
+        section=section_name,
         question=state["current_question"],
         context=state["context"],
         answer=state["current_answer"],
@@ -167,12 +166,13 @@ async def store_result(state: InterviewState) -> dict[str, Any]:
     """Persist Q&A + evaluation and advance section/question counters."""
     section = current_section(state)
     section_name = section.get("name", "") if section else ""
-
+    current_focus_area=section.get("focus_areas", [""])[0] if section else ""
+    print(state)
     entry = {
         "question": state["current_question"],
         "question_type": state["current_question_type"],
         "answer": state["current_answer"],
-        "focus_area": state["current_focus_area"],
+        "focus_area": current_focus_area,
         "evaluation": state["evaluation"],
         "section": section_name,
     }

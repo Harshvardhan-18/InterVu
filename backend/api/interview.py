@@ -175,12 +175,12 @@ async def submit_answer(
 
     config = _graph_config(interview.id)
 
-    current_state = await compiled_graph.aget_state(config)
-    if not current_state or not current_state.values:
-        raise HTTPException(status_code=400, detail="Interview session not found in graph state")
+    await compiled_graph.aupdate_state(
+        config,
+        {"current_answer":body.answer}
+    )
     
-    state_with_answer = {**current_state.values, "current_answer": body.answer}
-    final_state = await compiled_graph.ainvoke(state_with_answer, config=config)
+    final_state = await compiled_graph.ainvoke(None, config=config)
 
     evaluation = final_state.get("evaluation", {})
     interview_complete = final_state.get("interview_complete", False)
