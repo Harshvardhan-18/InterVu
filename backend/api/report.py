@@ -9,10 +9,12 @@ Endpoints:
 from __future__ import annotations
 
 from typing import Any
-
+from sqlalchemy import select
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from sqlalchemy.orm import selectinload
+from agents.registry import feedback_agent
+from graph.interview_graph import compiled_graph
 from db.postgres import get_db, Interview, Report
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -28,7 +30,8 @@ async def get_report(
     if not interview:
         raise HTTPException(status_code=404, detail="Interview not found")
 
-    report = await db.get(Report, interview_id)
+    result = await db.execute(select(Report).where(Report.interview_id == interview_id))
+    report = result.scalar_one_or_none()
     if not report:
         raise HTTPException(status_code=404, detail="Report not yet generated. Complete the interview first.")
 
@@ -58,34 +61,36 @@ async def generate_report(
     if interview.status != "completed":
         raise HTTPException(status_code=400, detail="Interview must be completed before generating a report.")
 
-    # TODO: 1. Load all Question + Response pairs from DB
-    # TODO: 2. Run FeedbackAgent.generate_report(company, role, qa_pairs)
-    # TODO: 3. Upsert Report into DB
+    config ={"configurable":{"thread_id":str(interview_id)}}
+    graph_state = await compiled_graph.aget_state(config=config)
+    qa_history = graph_state.values.get("qa_history", []) if graph_state else []
 
-    placeholder_report = {
-        "overall_score": 78,
-        "strong_topics": ["Data Structures", "System Design"],
-        "weak_topics": ["Dynamic Programming", "OS Concepts"],
-        "section_scores": {
-            "Screening": 8.5,
-            "Coding": 7.0,
-            "Role Specific": 8.0,
-            "Behavioral": 7.5,
-        },
-        "recommendations": [
-            "Practice more DP problems on LeetCode",
-            "Review OS fundamentals (scheduling, memory management)",
-            "Work on articulating trade-offs more clearly",
-        ],
-        "summary": "Strong candidate with good fundamentals. Needs improvement in dynamic programming.",
-    }
-
-    report = Report(
-        interview_id=interview_id,
-        overall_score=placeholder_report["overall_score"],
-        report_json=placeholder_report,
+    report_data = await feedback_agent.generate_report(
+        company=interview.company,
+        role=interview.role,
+        qa_pairs=qa_history
     )
-    db.add(report)
+
+    result = await db.execute(
+        select(Report).where(Report.interview_id == interview_id)
+    )
+    existing = result.scalar_one_or_none()
+
+    if existing:
+        existing.overall_score = report_data.get("overall_score", 0)
+        existing.report_json = report_data
+    else:
+        db.add(Report(
+            interview_id=interview_id,
+            overall_score=report_data.get("overall_score", 0),
+            report_json=report_data,
+        ))
+
     await db.flush()
 
-    return {"message": "Report generated", "report": placeholder_report}
+    return {
+        "message": "Report generated",
+        "interview_id": interview_id,
+        "overall_score": report_data.get("overall_score", 0),
+        "report": report_data
+    }

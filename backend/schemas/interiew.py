@@ -3,6 +3,7 @@ from typing import Any
 
 class StartInterviewRequest(BaseModel):
     user_id: int
+    username: str
     company: str
     role: str
     difficulty: str = "medium"

@@ -5,25 +5,43 @@ Scores candidate answers across four dimensions:
   - Correctness
   - Depth
   - Communication
-  - Confidence
+  - Problem Solving
 """
 
 from __future__ import annotations
 
 import json
 from typing import Any
+import os 
+from dotenv import load_dotenv
+from pydantic import ValidationError
+load_dotenv()  # Load GROQ_API_KEY from .env file
+from langchain_groq import ChatGroq
+from prompts.evaluator import EVALUATOR_PROMPT
+from schemas.evaluator import Evaluation
+import asyncio
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-
+FALLBACK_EVALUATION = {
+    "score": 5.0,
+    "correctness": 5.0,
+    "depth": 5.0,
+    "communication": 5.0,
+    "problem_solving": 5.0,
+    "strengths": [],
+    "weaknesses": [],
+    "brief_feedback": "Unable to evaluate answer at this time.",
+}
 
 class EvaluatorAgent:
     """Evaluates a candidate's answer and returns a structured score."""
 
-    def __init__(self, model: str = "gemini-2.5-pro-preview-06-05") -> None:
-        self.llm = ChatGoogleGenerativeAI(model=model)
+    def __init__(self, model: str = "llama-3.3-70b-versatile") -> None:
+        self.llm = ChatGroq(model=model, api_key=os.getenv("GROQ_API_KEY"))
 
-    def evaluate(
+    async def evaluate(
         self,
+        company: str,
+        role: str,
         question: str,
         answer: str,
         context: str,
@@ -38,50 +56,35 @@ class EvaluatorAgent:
                 "correctness": float,    # 0-10
                 "depth": float,          # 0-10
                 "communication": float,  # 0-10
-                "confidence": float,     # 0-10
+                "problem_solving": float,     # 0-10
                 "strengths": [str, ...],
                 "weaknesses": [str, ...],
                 "brief_feedback": str
             }
         """
-        prompt = f"""You are a senior technical interviewer evaluating a candidate's answer.
+        prompt = EVALUATOR_PROMPT.format(
+            company=company,
+            role=role,
+            section=section,
+            question=question,
+            answer=answer,
+            context=context
+        )
+        try:
+            response = await self.llm.ainvoke(prompt)
+            raw = response.content.strip()
 
-## Interview Section: {section}
+            start = raw.find("{")
+            end = raw.rfind("}")
+            if start == -1 or end == -1:
+                raise ValueError(f"No JSON found in response:\n{raw[:500]}")
 
-## Question:
-{question}
-
-## Candidate's Answer:
-{answer}
-
-## Reference Context:
-{context}
-
-Evaluate the answer across these dimensions (score 0-10 each):
-1. Correctness — technical accuracy
-2. Depth — thoroughness and detail
-3. Communication — clarity and structure
-4. Confidence — assertiveness and precision
-
-Respond ONLY with a valid JSON object in this exact format:
-{{
-  "score": <overall 0-10 float>,
-  "correctness": <0-10 float>,
-  "depth": <0-10 float>,
-  "communication": <0-10 float>,
-  "confidence": <0-10 float>,
-  "strengths": ["...", "..."],
-  "weaknesses": ["...", "..."],
-  "brief_feedback": "..."
-}}"""
-
-        response = self.llm.invoke(prompt)
-        raw = response.content.strip()
-
-        # Strip markdown code fences if present
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-
-        return json.loads(raw)
+            data = json.loads(raw[start:end + 1])
+            validated = Evaluation(**data)
+            return validated.model_dump()
+        except (ValidationError, ValueError, json.JSONDecodeError) as e:
+            print(f"[evaluator] Evaluation error: {e}")
+            return FALLBACK_EVALUATION.copy()
+        except Exception as e:
+            print(f"[evaluator] Unexpected error: {e}")
+            return FALLBACK_EVALUATION.copy()
