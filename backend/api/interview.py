@@ -261,3 +261,43 @@ async def complete_interview(
     await db.flush()
 
     return {"message": "Interview completed", "interview_id": interview_id,"overall_score": report_data.get("overall_score", 0)}
+
+@router.post("/{interview_id}/end")
+async def end_interview_early(
+    interview_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    End an in-progress interview early and generate a report based on
+    whatever questions were answered so far.
+    """
+    interview = await  _get_interview_or_404(interview_id, db)
+    if interview.status == "completed":
+        raise HTTPException(status_code=400, detail="Interview already completed")
+    config = _graph_config(interview.id)
+    graph_state = await compiled_graph.aget_state(config)
+    qa_history = graph_state.values.get("qa_history", []) if graph_state else []
+
+    if not qa_history:
+        raise HTTPException(status_code=400, detail="No questions answered yet, cannot generate report")
+    
+    await compiled_graph.aupdate_state(config, {"interview_complete": True})
+
+    report_data = await feedback_agent.generate_report(company=interview.company, role=interview.role, qa_pairs=qa_history)
+
+    report = Report(
+        interview_id=interview_id,
+        overall_score=report_data.get("overall_score", 0),
+        report_json=report_data,
+    )
+
+    db.add(report)
+    interview.status = "completed"
+    await db.flush()
+
+    return {
+        "message": "Interview ended early",
+        "interview_id": interview_id,
+        "questions_answered": len(qa_history),
+        "report": report_data,
+    }

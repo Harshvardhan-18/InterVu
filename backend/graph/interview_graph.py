@@ -155,19 +155,11 @@ async def adjust_difficulty(state: InterviewState) -> dict[str, Any]:
         new_difficulty = state["difficulty"]
     return {"difficulty": new_difficulty}
 
-
-# def generate_followup(state: InterviewState) -> dict[str, Any]:
-#     """Optionally generate a follow-up question."""
-#     # TODO: wire to FollowUpAgent
-#     return {"followup_question": None, "needs_followup": False}
-
-
 async def store_result(state: InterviewState) -> dict[str, Any]:
     """Persist Q&A + evaluation and advance section/question counters."""
     section = current_section(state)
     section_name = section.get("name", "") if section else ""
     current_focus_area=section.get("focus_areas", [""])[0] if section else ""
-    print(state)
     entry = {
         "question": state["current_question"],
         "question_type": state["current_question_type"],
