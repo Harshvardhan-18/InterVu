@@ -102,6 +102,7 @@ async def start_interview(
         "company": company,
         "role": role,
         "difficulty": difficulty,
+        "username": body.username,
         "blueprint": blueprint,
         "current_section_index": 0,
         "questions_asked_in_section": 0,

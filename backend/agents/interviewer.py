@@ -49,6 +49,7 @@ class InterviewerAgent:
     async def generate_question(
         self,
         company: str,
+        username: str,
         role: str,
         context: str,
         section_name: str,
@@ -82,6 +83,7 @@ class InterviewerAgent:
         prompt = INTERVIEWER_PROMPT.format(
             company=company,
             role=role,
+            username=username,
             context=context,
             section_name=section_name,
             section_type=section_type,

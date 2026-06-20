@@ -49,6 +49,7 @@ class InterviewState(TypedDict):
     company: str
     role: str
     difficulty: str  # "easy" | "medium" | "hard"
+    username: str
 
     # Blueprint
     blueprint: dict[str, Any]
@@ -102,9 +103,28 @@ async def generate_question(state: InterviewState) -> dict[str, Any]:
             "current_focus_area": "",
         }
     
+    is_very_first_question = (
+        state["current_section_index"] == 0 and state["questions_asked_in_section"] == 0
+    )
+
+    if is_very_first_question:
+        username = state.get("username","")
+        greeting_name = f", {username}" if username else ""
+        return {
+            "current_question": (
+                f"Hi{greeting_name}, welcome! I'll be conducting your interview today "
+                f"for the {state['role']} position at {state['company']}. "
+                f"Before we dive in, I'd love to hear a bit about yourself — "
+                f"your background, what you've been working on recently, and what draws you to this role."
+            ),
+            "current_question_type": "behavioral",
+            "current_focus_area": "introduction",
+        }
+
     result = await interviewer.generate_question(
         company=state["company"],
         role=state["role"],
+        username=state["username"],
         context=state["context"],
         section_name=section.get("name", ""),
         section_type=section.get("type", ""),
