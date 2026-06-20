@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from graph.interview_graph import init_graph,close_graph
 from api.interview import router as interview_router
 from api.report import router as report_router
 from db.postgres import create_tables
@@ -18,7 +18,9 @@ from db.postgres import create_tables
 async def lifespan(app: FastAPI):
     """Run startup tasks (DB init) and cleanup on shutdown."""
     await create_tables()
+    await init_graph()
     yield
+    await close_graph()
 
 
 app = FastAPI(

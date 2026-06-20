@@ -43,10 +43,31 @@ export default function InterviewPage() {
       data=>{
         setBlueprint(data.blueprint);
         setCurrentSection(data.current_section ?? data.blueprint.sections[0]?.name ?? "");
-        if(data.current_question) {
-          setMessages([{role:"interviewer",content:data.current_question}]);
+
+        const rebuiltMessages: Message[] = [];
+        let answeredCount = 0;
+        let runningScoreSum = 0;
+
+        for (const entry of data.history) {
+          rebuiltMessages.push({
+            role: "interviewer",
+            content: entry.question,
+            evaluation: entry.evaluation ?? undefined,
+          });
+          if (entry.answer!== null) {
+            rebuiltMessages.push({role: "user", content: entry.answer});
+            answeredCount++;
+            if (entry.evaluation) {
+              runningScoreSum += entry.evaluation.score; // Convert to 100-point scale
+            }
+          }
         }
-        if(data.status === "completed") {
+        setMessages(rebuiltMessages);
+        setQuestionsAnswered(answeredCount);
+        if(answeredCount > 0) {
+          setLiveScore(Math.round(runningScoreSum / answeredCount) * 10);
+        }
+        if(data.status==="completed"){
           setComplete(true);
         }
       }).catch(e=>{

@@ -18,7 +18,7 @@ from pipeline import ResearchPipeline
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from agents.registry import blueprint_generator,feedback_agent
-from graph.interview_graph import InterviewState,compiled_graph
+from graph.interview_graph import InterviewState,get_compiled_graph
 from schemas.interiew import StartInterviewRequest, StartInterviewResponse, SubmitAnswerRequest, SubmitAnswerResponse
 from db.postgres import Report, get_db, Interview, Question, Response
 
@@ -118,6 +118,7 @@ async def start_interview(
     }
 
     config = _graph_config(interview.id)
+    compiled_graph = get_compiled_graph()
     state = await compiled_graph.ainvoke(initial_state, config=config)
 
     first_question = state["current_question"]
@@ -153,10 +154,25 @@ async def get_interview(
         select(Question)
         .where(Question.interview_id == interview_id)
         .order_by(Question.order_index.desc())
-        .limit(1)
     )
 
-    latest_question = result.scalar_one_or_none()
+    questions = result.scalars().all()
+
+    history = []
+    for q in questions:
+        response_result = await db.execute(
+            select(Response).where(Response.question_id == q.id)
+        )
+        response = response_result.scalar_one_or_none()
+        history.append({
+            "question": q.question,
+            "answer": response.answer if response else None,
+            "question_type": q.question_type,
+            "section": q.section,
+            "evaluation": response.evaluation if response else None,
+        })
+
+    latest_question = questions[-1] if questions else None
 
     return {
         "id": interview.id,
@@ -168,6 +184,7 @@ async def get_interview(
         "current_question": latest_question.question if latest_question else None,
         "current_question_type": latest_question.question_type if latest_question else None,
         "current_section": latest_question.section if latest_question else None,
+        "history": history,
     }
 
 
@@ -189,7 +206,7 @@ async def submit_answer(
         raise HTTPException(status_code=400, detail="Interview already completed")
 
     config = _graph_config(interview.id)
-
+    compiled_graph = get_compiled_graph()
     current_state = await compiled_graph.aget_state(config)
     if not current_state or not current_state.values or "blueprint" not in current_state.values:
         raise HTTPException(status_code=410, detail="This interview's session state was lost (likely due to a server restart). Please start a new interview.")
@@ -262,6 +279,7 @@ async def complete_interview(
     interview = await  _get_interview_or_404(interview_id, db)
 
     config = _graph_config(interview.id)
+    compiled_graph = get_compiled_graph()
     graph_state = await compiled_graph.aget_state(config)
     qa_history = graph_state.values.get("qa_history", []) if graph_state else []
 
@@ -290,6 +308,7 @@ async def end_interview_early(
     interview = await  _get_interview_or_404(interview_id, db)
     if interview.status == "completed":
         raise HTTPException(status_code=400, detail="Interview already completed")
+    compiled_graph = get_compiled_graph()
     config = _graph_config(interview.id)
     graph_state = await compiled_graph.aget_state(config)
     qa_history = graph_state.values.get("qa_history", []) if graph_state else []

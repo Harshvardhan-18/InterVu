@@ -36,6 +36,14 @@ export type StartInterviewResponse = {
   blueprint: Blueprint;
 };
 
+export type HistoryEntry = {
+  question: string;
+  question_type: string;
+  section: string;
+  answer: string | null;
+  evaluation: Evaluation | null;
+};
+
 export type Evaluation = {
   score: number;
   correctness: number;
@@ -103,7 +111,7 @@ export const api = {
       }),
 
     get: (id: number) =>
-      request<{ id: number; company: string; role: string; difficulty: string; status: string; blueprint: Blueprint, current_question: string | null, current_question_type: string | null, current_section: string | null }>(
+      request<{ id: number; company: string; role: string; difficulty: string; status: string; blueprint: Blueprint, current_question: string | null, current_question_type: string | null, current_section: string | null, history: HistoryEntry[] }>(
         `/api/interviews/${id}`
       ),
 

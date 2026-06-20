@@ -37,6 +37,10 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.checkpoint.memory import MemorySaver
 from rag.retriever import RAGRetriever
 from agents.registry import interviewer,evaluator
+import os
+from dotenv import load_dotenv
+load_dotenv()
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 _retriever = RAGRetriever()
 
@@ -266,13 +270,52 @@ def build_interview_graph() -> StateGraph:
 
     return graph
 
+_checkpointer_cm = None
+compiled_graph:Any = None
 
-def get_interview_graph() -> StateGraph:
-    checkpointer = MemorySaver()
+async def init_graph():
+    """
+    Call once at FastAPI startup (in the lifespan handler).
+    Initializes a Postgres-backed checkpointer so interview sessions survive
+    server restarts, and compiles the graph.
+    """
+    global _checkpointer_cm, compiled_graph
+
+    conn_string = os.getenv("DATABASE_URL_PSYCOPG")
+    if not conn_string:
+        raise ValueError("DATABASE_URL_PSYCOPG environment variable is not set.")
+
+    _checkpointer_cm = AsyncPostgresSaver.from_conn_string(conn_string=conn_string)
+    checkpointer = await _checkpointer_cm.__aenter__()
+    await checkpointer.setup()
+
     graph = build_interview_graph()
-    return graph.compile(
+    compiled_graph = graph.compile(
         checkpointer=checkpointer,
         interrupt_after=["generate_question"]
     )
+    print("[graph] Interview graph initialized and compiled with Postgres checkpointer.")
+    return compiled_graph
+    
+    
+    
+async def close_graph():
+    """
+    Call once at FastAPI shutdown (in the lifespan handler).
+    Closes the Postgres-backed checkpointer.
+    """
+    global _checkpointer_cm
+    if _checkpointer_cm:
+        await _checkpointer_cm.__aexit__(None, None, None)
+        print("[graph] Interview graph checkpointer closed.")
 
-compiled_graph = get_interview_graph()
+def get_compiled_graph():
+    """
+    Accessor for the compiled graph. Raises if called before init_graph()
+    has run, which gives a clear error instead of a cryptic NoneType crash.
+    """
+    if compiled_graph is None:
+        raise RuntimeError(
+            "Compiled graph is not initialized. Call init_graph() first."
+        )
+    return compiled_graph
