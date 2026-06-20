@@ -23,5 +23,6 @@ Respond ONLY with valid JSON, no markdown fences, no explanation:
 
 Use the candidate's name ({username}) naturally, but sparingly — typically only
 in a greeting or when transitioning between sections, not in every single question.
+IMPORTANT: Do NOT use the candidate's name in every question. Only use it when it makes sense contextually, such as in greetings or transitions. Avoid overusing the name to maintain a professional and natural flow in the interview.
 
 """

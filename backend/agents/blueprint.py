@@ -15,8 +15,49 @@ import json
 from prompts.blueprint import BLUEPRINT_PROMPT
 import asyncio
 import os
+import re
 from dotenv import load_dotenv
 load_dotenv()
+
+SECTION_NAME_ORDER_PATTERNS: list[tuple[int, list[str]]] = [
+    (0, ["screening", "screening call", "screening round", "fitment"]),
+    (1, ["online assessment", "google oa", r"^oa$", "dsa round"]),
+    (2, ["phone screen", "telephonic", "telephone"]),
+    (3, [r"^round \d", "coding round", "technical round", "technical interview", "onsite", "on-site", "on site", "team match"]),
+    (4, ["system design"]),
+    (5, ["googleyness", "googlyness", "googliness", "hr round", "hr interview", "behavioral", "hiring committee"]),
+]
+
+SECTIONS_TYPE_ORDER ={
+    "screening": 0,
+    "coding": 1,        
+    "technical": 2,    
+    "system_design": 3,
+    "behavioral": 4, 
+}
+
+def _name_based_order(name: str) -> int | None:
+    name_lower = name.strip().lower()
+    for order, patterns in SECTION_NAME_ORDER_PATTERNS:
+        if any(re.search(p, name_lower) for p in patterns):
+            return order
+    return None
+
+
+def sort_sections(sections: list[dict]) -> list[dict]:
+    """
+    Sort sections into a realistic interview flow.
+    Prefers name-based pattern matching (more reliable than the LLM's
+    self-reported `type`, which is sometimes inconsistent), falling back
+    to type-based order if the name doesn't match a known pattern.
+    """
+    def sort_key(s: dict) -> int:
+        name_order = _name_based_order(s.get("name", ""))
+        if name_order is not None:
+            return name_order
+        return SECTIONS_TYPE_ORDER.get(s.get("type", ""), 99)
+
+    return sorted(sections, key=sort_key)
 
 SECTION_DEFAULTS = {
     "easy": [
@@ -48,7 +89,7 @@ class BlueprintGenerator:
     
     def _fallback(self,difficulty:str)->dict[str,Any]:
         sections= SECTION_DEFAULTS.get(difficulty, SECTION_DEFAULTS["medium"])
-        return {"sections":sections}
+        return {"sections":sort_sections(sections)}
     
     async def generate(
         self,
@@ -95,7 +136,9 @@ class BlueprintGenerator:
                 raise ValueError(f"No JSON found in response:\n{raw[:500]}")
             data = json.loads(raw[start:end+1])
             validated = Blueprint(**data)  # Validate structure with Pydantic
-            return validated.model_dump()
+            result = validated.model_dump()
+            result["sections"] = sort_sections(result.get("sections", []))
+            return result
         except (ValidationError, json.JSONDecodeError, ValueError) as e:
             print(f"[blueprint] Error generating blueprint: {e}")
             return self._fallback(difficulty)
