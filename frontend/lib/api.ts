@@ -19,10 +19,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export type BlueprintSection = {
+  name: string;
+  type: "coding" | "behavioral" | "technical" | "system_design" | "screening";
+  questions: number;
+  focus_areas: string[];
+};
+
 export type Blueprint = {
-  interview_type: string;
-  estimated_duration_minutes: number;
-  sections: Array<{ name: string; type: string; questions: number; focus_areas: string[] }>;
+  sections: BlueprintSection[];
 };
 
 export type StartInterviewResponse = {
@@ -36,7 +41,7 @@ export type Evaluation = {
   correctness: number;
   depth: number;
   communication: number;
-  confidence: number;
+  problem_solving: number;
   strengths: string[];
   weaknesses: string[];
   brief_feedback: string;
@@ -45,7 +50,15 @@ export type Evaluation = {
 export type SubmitAnswerResponse = {
   evaluation: Evaluation;
   next_question: string | null;
+  next_section: string | null;
   interview_complete: boolean;
+};
+
+export type EndInterviewResponse = {
+  message: string;
+  interview_id: number;
+  questions_answered: number;
+  overall_score: number;
 };
 
 export type ReportResponse = {
@@ -63,12 +76,23 @@ export type ReportResponse = {
   created_at: string;
 };
 
+export type InterviewSummary = {
+  id: number;
+  company: string;
+  role: string;
+  date: string;
+  score: number;
+  status: "in_progress" | "completed" | "scheduled";
+  skills: string[];
+}
+
 // ── API Methods ───────────────────────────────────────────────────────────────
 
 export const api = {
   interviews: {
     start: (body: {
       user_id: number;
+      username: string;
       company: string;
       role: string;
       difficulty: string;
@@ -79,9 +103,12 @@ export const api = {
       }),
 
     get: (id: number) =>
-      request<{ id: number; company: string; role: string; difficulty: string; status: string; blueprint: Blueprint }>(
+      request<{ id: number; company: string; role: string; difficulty: string; status: string; blueprint: Blueprint, current_question: string | null, current_question_type: string | null, current_section: string | null }>(
         `/api/interviews/${id}`
       ),
+
+    list: (user_id:number) =>
+      request<InterviewSummary[]>(`/api/interviews?user_id=${user_id}`),
 
     submitAnswer: (id: number, answer: string) =>
       request<SubmitAnswerResponse>(`/api/interviews/${id}/answer`, {
@@ -90,10 +117,15 @@ export const api = {
       }),
 
     complete: (id: number) =>
-      request<{ message: string; interview_id: number }>(
+      request<{ message: string; interview_id: number; overall_score: number }>(
         `/api/interviews/${id}/complete`,
         { method: "POST" }
       ),
+
+    endEarly: (id: number) =>
+      request<EndInterviewResponse>(`/api/interviews/${id}/end`, {
+        method: "POST",
+      }),
   },
 
   reports: {

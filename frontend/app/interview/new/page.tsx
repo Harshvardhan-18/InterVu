@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = 'force-dynamic';
-
-import { useState, useEffect } from "react";
+import {api} from "@/lib/api";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/app-shell";
 import {
@@ -55,12 +55,29 @@ export default function NewInterviewPage() {
     if (!company || !role) return;
     setLoading(true);
     const steps: PipelineStep[] = ["researching", "extracting", "building", "generating"];
-    for (let i = 0; i < steps.length; i++) {
-      setPipelineStep(steps[i]);
-      await new Promise(r => setTimeout(r, 1400));
-      setDoneSteps(prev => [...prev, steps[i]]);
+    setPipelineStep(steps[0]);
+    try {
+      const resultPromise = api.interviews.start({
+        user_id: 1, // Replace with actual user ID
+        username:"Harsh",
+        company,
+        role,
+        difficulty,
+      });
+
+      for(let i = 1; i < steps.length; i++) {
+        await new Promise(res => setTimeout(res, 1500)); // Simulate time taken for each step
+        setDoneSteps(prev => [...prev, steps[i-1]]);
+        setPipelineStep(steps[i]);
+      }
+      const result = await resultPromise;
+      setDoneSteps(prev => [...prev, steps[steps.length - 1]]);
+      router.push(`/interview/${result.interview_id}`);
+    } catch (error) {
+      console.error("Error starting interview:", error);
+      alert("Failed to start interview. Please try again.");
+      setLoading(false);
     }
-    router.push("/interview/1");
   };
 
   const canProceed = step === 1 ? !!company : step === 2 ? !!role : true;

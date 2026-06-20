@@ -2,6 +2,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import AppShell from "@/components/layout/app-shell";
 import ScoreRing from "@/components/ui/score-ring";
 import {
@@ -9,38 +10,8 @@ import {
   TrendingUp, Calendar, ChevronRight, BarChart3,
   Zap, ArrowLeft,
 } from "lucide-react";
+import {api, type ReportResponse} from "@/lib/api";
 
-const MOCK_REPORT = {
-  company: "NVIDIA",
-  role: "PTX Compiler Intern",
-  date: "May 28, 2025",
-  overall_score: 78,
-  grade: "Good",
-  summary: "Strong candidate with solid fundamentals in data structures and general algorithms. Needs to deepen knowledge in compiler theory and dynamic programming before the interview.",
-  section_scores: [
-    { label: "Screening",     score: 8.5, max: 10 },
-    { label: "Coding",        score: 6.8, max: 10 },
-    { label: "Role Specific", score: 7.9, max: 10 },
-    { label: "Behavioral",    score: 8.2, max: 10 },
-  ],
-  strong_topics: [
-    { label: "Data Structures",     detail: "Arrays, Trees, Heaps" },
-    { label: "Graph Algorithms",    detail: "BFS, DFS, Dijkstra" },
-    { label: "OOP Principles",      detail: "Design patterns, SOLID" },
-    { label: "System Design Basics",detail: "Load balancing, Caching" },
-  ],
-  weak_topics: [
-    { label: "Dynamic Programming", detail: "Memoization, tabulation" },
-    { label: "Compiler Theory",     detail: "Parsing, AST, IR" },
-    { label: "OS Internals",        detail: "Scheduling, virtual memory" },
-    { label: "Behavioral Depth",    detail: "STAR method, structured stories" },
-  ],
-  recommendations: [
-    { week: "Week 1", title: "Graph & Tree Mastery",        tasks: ["15 LeetCode graph problems (Medium)", "Implement Dijkstra, Bellman-Ford from scratch", "Study tree serialization & traversals"] },
-    { week: "Week 2", title: "Dynamic Programming Sprint",  tasks: ["0/1 Knapsack, LIS, Edit Distance", "Solve 20 DP problems (Medium/Hard)", "Pattern recognition: top-down vs bottom-up"] },
-    { week: "Week 3", title: "Compiler & Behavioral Prep",  tasks: ["Read AIMA Compiler chapters 1–4", "Practice 10 STAR-method behavioral answers", "Review OS: scheduling, virtual memory, IPC"] },
-  ],
-};
 
 const scoreColor = (s: number) =>
   s >= 8 ? "#22C55E" : s >= 6 ? "#F59E0B" : "#EF4444";
@@ -52,10 +23,67 @@ const scoreBg = (s: number) =>
     ? { bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.2)" }
     : { bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.2)" };
 
+const gradeLabel = (score: number) =>
+  score >= 90 ? "Excellent" : score >= 76 ? "Good" : score >= 61 ? "Average" : score >= 41 ? "Below Average" : "Needs Work";
+
+const gradeColor = (score: number) =>
+  score >= 76 ? "#22C55E" : score >= 61 ? "#F59E0B" : "#EF4444";
+
+
 export default function ReportPage() {
   const router = useRouter();
   const params = useParams();
-  const report = MOCK_REPORT;
+  const interviewId = Number(params.id);
+
+  const [report,setReport] = useState<ReportResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(()=>{
+    if(!interviewId) {return}
+    api.reports.get(interviewId)
+    .then(setReport)
+    .catch((e)=>{
+      console.error("Failed to fetch report:", e);
+      setError("Failed to load report. Please try again later.");
+    }).finally(()=> setLoading(false));
+  },[interviewId]);
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div style={{ padding: "32px", maxWidth: "900px", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
+          <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>Loading report…</span>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (error || !report) {
+    return (
+      <AppShell>
+        <div style={{ padding: "32px", maxWidth: "900px" }}>
+          <p style={{ color: "var(--text-muted)", fontSize: "14px", marginBottom: "16px" }}>{error ?? "Report not available."}</p>
+          <button
+            onClick={() => router.push("/dashboard")}
+            style={{
+              padding: "10px 18px", borderRadius: "10px",
+              background: "var(--surface-1)", border: "1px solid var(--border-default)",
+              color: "var(--text-secondary)", fontSize: "13px", fontWeight: 600,
+              cursor: "pointer", fontFamily: "inherit",
+            }}
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </AppShell>
+    );
+  }
+
+  const sectionScores = Object.entries(report.report.section_scores);
+  const date = new Date(report.created_at).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
+  const grade = gradeLabel(report.overall_score);
+  const gColor = gradeColor(report.overall_score);
 
   return (
     <AppShell>
@@ -87,7 +115,7 @@ export default function ReportPage() {
               Interview Complete
             </span>
             <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>·</span>
-            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{report.date}</span>
+            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{date}</span>
           </div>
           <h1 style={{ fontSize: "24px", fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.5px", marginBottom: "4px" }}>
             Feedback Report
@@ -115,49 +143,44 @@ export default function ReportPage() {
               <span style={{
                 fontSize: "11px", fontWeight: 700, padding: "3px 10px", borderRadius: "6px",
                 background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)", color: "#22C55E",
-              }}>Good</span>
+              }}>{grade}</span>
             </div>
             <p style={{ fontSize: "14px", color: "var(--text-secondary)", lineHeight: 1.7, maxWidth: "480px", marginBottom: "20px" }}>
-              {report.summary}
+              {report.report.summary}
             </p>
             <div style={{ display: "flex", gap: "24px" }}>
-              {[
-                { label: "Questions", value: "5" },
-                { label: "Sections",  value: "4" },
-                { label: "Duration",  value: "~30 min" },
-              ].map(item => (
-                <div key={item.label}>
-                  <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-primary)" }}>{item.value}</div>
-                  <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{item.label}</div>
-                </div>
-              ))}
+              <div>
+                <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-primary)" }}>{sectionScores.length}</div>
+                <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>Sections</div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* ── Section scores ── */}
-        <div style={{
-          background: "var(--surface-1)", border: "1px solid var(--border-subtle)",
-          borderRadius: "18px", padding: "24px", marginBottom: "20px",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
+        {sectionScores.length > 0 && (
+          <div style={{
+            background: "var(--surface-1)", border: "1px solid var(--border-subtle)",
+            borderRadius: "18px", padding: "24px", marginBottom: "20px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
             <BarChart3 size={16} color="#8B5CF6" />
             <h3 style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>Section Breakdown</h3>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {report.section_scores.map(s => {
-              const pct = (s.score / s.max) * 100;
-              const c = scoreColor(s.score);
-              const { bg, border } = scoreBg(s.score);
+            {sectionScores.map(([label, score]) => {
+              const pct = (score / 10) * 100;
+              const c = scoreColor(score);
+              const { bg, border } = scoreBg(score);
               return (
-                <div key={s.label}>
+                <div key={label}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                    <span style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text-primary)" }}>{s.label}</span>
+                    <span style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text-primary)" }}>{label}</span>
                     <span style={{
                       fontSize: "12px", fontWeight: 700, padding: "2px 10px", borderRadius: "6px",
                       background: bg, border: `1px solid ${border}`, color: c,
                     }}>
-                      {s.score}/{s.max}
+                      {score.toFixed(1)}/10
                     </span>
                   </div>
                   <div style={{ height: "6px", background: "var(--surface-3)", borderRadius: "6px", overflow: "hidden" }}>
@@ -172,6 +195,7 @@ export default function ReportPage() {
             })}
           </div>
         </div>
+        )}
 
         {/* ── Strong / Weak ── */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
@@ -184,13 +208,10 @@ export default function ReportPage() {
               <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#22C55E" }}>Strong Areas</h3>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {report.strong_topics.map(t => (
-                <div key={t.label} style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+              {report.report.strong_topics.map(t => (
+                <div key={t} style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
                   <CheckCircle2 size={14} color="#22C55E" style={{ flexShrink: 0, marginTop: "2px" }} />
-                  <div>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "1px" }}>{t.label}</div>
-                    <div style={{ fontSize: "11.5px", color: "var(--text-muted)" }}>{t.detail}</div>
-                  </div>
+                    <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "1px" }}>{t}</span>
                 </div>
               ))}
             </div>
@@ -205,13 +226,10 @@ export default function ReportPage() {
               <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#EF4444" }}>Areas to Improve</h3>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {report.weak_topics.map(t => (
-                <div key={t.label} style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+              {report.report.weak_topics.map(t => (
+                <div key={t} style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
                   <div style={{ width: "14px", height: "14px", borderRadius: "50%", border: "1.5px solid #EF4444", flexShrink: 0, marginTop: "2px" }} />
-                  <div>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "1px" }}>{t.label}</div>
-                    <div style={{ fontSize: "11.5px", color: "var(--text-muted)" }}>{t.detail}</div>
-                  </div>
+                  <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "1px" }}>{t}</span>
                 </div>
               ))}
             </div>
@@ -219,54 +237,27 @@ export default function ReportPage() {
         </div>
 
         {/* ── Study Roadmap ── */}
-        <div style={{
-          background: "var(--surface-1)", border: "1px solid var(--border-subtle)",
-          borderRadius: "18px", padding: "24px", marginBottom: "24px",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
-            <div style={{ width: "30px", height: "30px", borderRadius: "9px", background: "rgba(139,92,246,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <BookOpen size={15} color="#8B5CF6" />
-            </div>
-            <h3 style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>Recommended Study Plan</h3>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px" }}>
-            {report.recommendations.map((rec, i) => (
-              <div
-                key={rec.week}
-                style={{
-                  padding: "18px", borderRadius: "14px",
-                  background: "var(--surface-2)", border: "1px solid var(--border-subtle)",
-                  transition: "all 0.2s ease",
-                }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(139,92,246,0.3)"; (e.currentTarget as HTMLElement).style.background = "var(--surface-3)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-subtle)"; (e.currentTarget as HTMLElement).style.background = "var(--surface-2)"; }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-                  <div style={{
-                    width: "26px", height: "26px", borderRadius: "8px", fontSize: "11px", fontWeight: 800,
-                    display: "flex", alignItems: "center", justifyContent: "center", color: "white",
-                    background: i === 0 ? "linear-gradient(135deg,#7C3AED,#6366F1)" : i === 1 ? "linear-gradient(135deg,#059669,#10B981)" : "linear-gradient(135deg,#D97706,#F59E0B)",
-                  }}>
-                    {i + 1}
-                  </div>
-                  <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{rec.week}</span>
-                </div>
-                <h4 style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text-primary)", marginBottom: "10px", lineHeight: 1.3 }}>
-                  {rec.title}
-                </h4>
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  {rec.tasks.map(task => (
-                    <div key={task} style={{ display: "flex", alignItems: "flex-start", gap: "7px" }}>
-                      <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#8B5CF6", marginTop: "6px", flexShrink: 0 }} />
-                      <span style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.5 }}>{task}</span>
-                    </div>
-                  ))}
-                </div>
+        {report.report.recommendations.length > 0 && (
+          <div style={{
+            background: "var(--surface-1)", border: "1px solid var(--border-subtle)",
+            borderRadius: "18px", padding: "24px", marginBottom: "24px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
+              <div style={{ width: "30px", height: "30px", borderRadius: "9px", background: "rgba(139,92,246,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <BookOpen size={15} color="#8B5CF6" />
               </div>
-            ))}
+              <h3 style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>Recommendations</h3>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {report.report.recommendations.map((rec, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "12px 14px", borderRadius: "10px", background: "var(--surface-2)" }}>
+                  <ChevronRight size={14} color="#8B5CF6" style={{ flexShrink: 0, marginTop: "2px" }} />
+                  <span style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5 }}>{rec}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ── Actions ── */}
         <div style={{ display: "flex", gap: "12px" }}>

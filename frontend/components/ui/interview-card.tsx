@@ -6,7 +6,7 @@ interface InterviewCardProps {
   role: string;
   date: string;
   score: number;
-  status: "completed" | "in-progress" | "scheduled";
+  status: "in_progress" | "completed" | "scheduled";
   skills?: string[];
   onClick?: () => void;
 }
@@ -55,7 +55,7 @@ export default function InterviewCard({
 
   const statusConfig = {
     completed:    { label: "Completed",   bg: "rgba(34,197,94,0.12)",  border: "rgba(34,197,94,0.25)",  color: "#22C55E" },
-    "in-progress":{ label: "In Progress", bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.25)", color: "#F59E0B" },
+    in_progress:{ label: "In Progress", bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.25)", color: "#F59E0B" },
     scheduled:    { label: "Scheduled",   bg: "rgba(99,102,241,0.12)", border: "rgba(99,102,241,0.25)", color: "#6366F1" },
   }[status];
 

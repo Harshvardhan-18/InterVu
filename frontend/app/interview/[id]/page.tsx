@@ -6,100 +6,98 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
   Zap, ChevronRight, CheckCircle2, Circle, Send,
-  ArrowRight, Mic, Paperclip, BarChart3,
+  ArrowRight, Mic, Paperclip, BarChart3, LogOut
 } from "lucide-react";
+import {api,type Blueprint, type Evaluation} from "@/lib/api";
 
 type Message = {
   role: "interviewer" | "user";
   content: string;
-  evaluation?: {
-    score: number;
-    brief_feedback: string;
-    strengths: string[];
-    weaknesses: string[];
-  };
+  evaluation?: Evaluation;
 };
-
-const MOCK_QUESTIONS = [
-  "Tell me about yourself and why you're interested in this role.",
-  "Explain the difference between BFS and DFS. When would you use each?",
-  "What is the time and space complexity of Dijkstra's algorithm, and how does it compare to Bellman-Ford?",
-  "Design a rate limiter for an API that handles 10,000 requests per second.",
-  "Tell me about a time you disagreed with a teammate and how you resolved it.",
-];
-
-const TOPICS = [
-  { label: "Intro & Background",    section: "Screening"     },
-  { label: "BFS / DFS",            section: "Coding"        },
-  { label: "Graph Algorithms",     section: "Coding"        },
-  { label: "System Design",        section: "Role Specific" },
-  { label: "Behavioral",           section: "Behavioral"    },
-];
-
-const SECTIONS = ["Screening", "Coding", "Role Specific", "Behavioral"];
 
 export default function InterviewPage() {
   const router = useRouter();
   const params = useParams();
-  const interviewId = params.id;
-
-  const [messages, setMessages] = useState<Message[]>([
-    { role: "interviewer", content: MOCK_QUESTIONS[0] },
-  ]);
+  const interviewId = Number(params.id);
+  const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [answer, setAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [questionIndex, setQuestionIndex] = useState(0);
+  const [loadingInitial, setLoadingInitial] = useState(true);
+  const [questionsAnswered, setQuestionsAnswered] = useState(0);
   const [complete, setComplete] = useState(false);
-  const [currentSection, setCurrentSection] = useState("Screening");
+  const [currentSection, setCurrentSection] = useState("");
   const [liveScore, setLiveScore] = useState<number | null>(null);
   const [expandedEval, setExpandedEval] = useState<number | null>(null);
+  const [ending,setEnding] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(()=> {
+    if(!interviewId) {
+      return;
+    }
+    api.interviews.get(interviewId).then(
+      data=>{
+        setBlueprint(data.blueprint);
+        setCurrentSection(data.current_section ?? data.blueprint.sections[0]?.name ?? "");
+        if(data.current_question) {
+          setMessages([{role:"interviewer",content:data.current_question}]);
+        }
+        if(data.status === "completed") {
+          setComplete(true);
+        }
+      }).catch(e=>{
+        console.error("Failed to load interview data:", e);
+      }).finally(()=>setLoadingInitial(false));
+  },[interviewId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, submitting]);
 
-  const totalQuestions = MOCK_QUESTIONS.length;
-  const progress = Math.round((questionIndex / totalQuestions) * 100);
+  const totalQuestions = blueprint?.sections.reduce((sum, s) => sum + s.questions, 0) ?? 0;
+  const progress = totalQuestions > 0 ? Math.round((questionsAnswered / totalQuestions) * 100) : 0;
 
   const handleSubmit = async () => {
     if (!answer.trim() || submitting) return;
     const userMsg: Message = { role: "user", content: answer };
     setMessages(prev => [...prev, userMsg]);
+    const submittedAnswer = answer;
     setAnswer("");
     setSubmitting(true);
 
-    await new Promise(r => setTimeout(r, 1600));
+    try{
+      const res= await api.interviews.submitAnswer(interviewId, submittedAnswer);
+      const newAnswered = questionsAnswered + 1;
+      setQuestionsAnswered(newAnswered);
 
-    const score = Math.round((6.5 + Math.random() * 3.5) * 10) / 10;
-    const mockEval = {
-      score,
-      brief_feedback: "Solid answer with good technical depth.",
-      strengths: ["Clear explanation", "Good use of examples", "Correct complexity analysis"],
-      weaknesses: ["Could mention edge cases", "Discuss trade-offs more explicitly"],
-    };
+      const scoreOutOf100=Math.round(res.evaluation.score * 10);
+      const newLive = liveScore === null ? scoreOutOf100 : Math.round((liveScore * (newAnswered - 1) + scoreOutOf100) / newAnswered);
+      setLiveScore(newLive);
 
-    const newLive = Math.round(((liveScore ?? 0) * questionIndex + score * 10) / (questionIndex + 1));
-    setLiveScore(newLive);
-
-    const nextIdx = questionIndex + 1;
-    if (nextIdx >= totalQuestions) {
-      setMessages(prev => [
-        ...prev,
-        { role: "interviewer", content: "That concludes our interview! You did well. Let me generate your detailed feedback report.", evaluation: mockEval },
-      ]);
-      setComplete(true);
-    } else {
-      setCurrentSection(SECTIONS[Math.min(nextIdx, SECTIONS.length - 1)]);
-      setMessages(prev => [
-        ...prev,
-        { role: "interviewer", content: MOCK_QUESTIONS[nextIdx], evaluation: mockEval },
-      ]);
-      setQuestionIndex(nextIdx);
+      if(res.interview_complete || !res.next_question) {
+        setMessages(prev => [
+          ...prev,
+          { role: "interviewer", content: "Thank you for completing the interview! We're processing your results.", evaluation: res.evaluation }
+        ]);
+        setComplete(true);
+      }else{
+        if(res.next_section) {setCurrentSection(res.next_section);}
+        setMessages(prev => [
+          ...prev,
+          { role: "interviewer", content: res.next_question!, evaluation: res.evaluation }
+        ]);
+      }
+    }catch(e){
+      console.error("Failed to submit answer:", e);
+      setMessages(prev => prev.slice(0,-1));
+      setAnswer(submittedAnswer);
+    }finally{
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const scoreColor = (s: number) =>
@@ -109,6 +107,26 @@ export default function InterviewPage() {
     el.style.height = "auto";
     el.style.height = Math.min(el.scrollHeight, 160) + "px";
   };
+
+  const handleEndEarly = async () =>{
+    if (ending) return;
+    setEnding(true);
+    try{
+      await api.interviews.endEarly(interviewId);
+      router.push(`/report/${interviewId}`);
+    }catch(e){
+      console.error("Failed to end interview early:", e);
+      setEnding(false);
+    }
+  }
+
+  if (loadingInitial) {
+    return (
+      <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", background: "var(--bg-base)" }}>
+        <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>Loading interview…</span>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "var(--bg-base)", overflow: "hidden" }}>
@@ -133,13 +151,13 @@ export default function InterviewPage() {
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
             <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Progress</span>
-            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-secondary)" }}>{questionIndex + 1}/{totalQuestions}</span>
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-secondary)" }}>{questionsAnswered}/{totalQuestions}</span>
           </div>
           <div style={{ height: "4px", background: "var(--surface-3)", borderRadius: "4px", overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${progress}%`, background: "linear-gradient(90deg,#7C3AED,#6366F1)", borderRadius: "4px", transition: "width 0.5s ease" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px" }}>
-            <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>Question {questionIndex + 1}</span>
+            <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>Question {questionsAnswered+1}</span>
             <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>{progress}%</span>
           </div>
         </div>
@@ -154,11 +172,11 @@ export default function InterviewPage() {
         <div>
           <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "10px" }}>Topics</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            {TOPICS.map((t, i) => {
-              const done = i < questionIndex;
-              const active = i === questionIndex;
+            {blueprint?.sections.map((s) => {
+              const done = s.name !== currentSection && blueprint.sections.findIndex(x=>x.name === s.name) < blueprint.sections.findIndex(x=>x.name === currentSection);
+              const active = s.name === currentSection;
               return (
-                <div key={t.label} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div key={s.name} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   {done
                     ? <CheckCircle2 size={13} color="#22C55E" style={{ flexShrink: 0 }} />
                     : active
@@ -166,7 +184,7 @@ export default function InterviewPage() {
                       : <Circle size={13} color="var(--text-muted)" style={{ flexShrink: 0 }} />
                   }
                   <span style={{ fontSize: "12px", color: done ? "#22C55E" : active ? "var(--text-primary)" : "var(--text-muted)", fontWeight: active ? 600 : 400 }}>
-                    {t.label}
+                    {s.name}
                   </span>
                 </div>
               );
@@ -186,6 +204,22 @@ export default function InterviewPage() {
               <p style={{ fontSize: "10px", color: "var(--text-muted)" }}>/ 100</p>
             </div>
           </div>
+        )}
+
+        {!complete && (
+          <button
+            onClick={handleEndEarly}
+            disabled={ending || messages.length === 0}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+              padding: "10px", borderRadius: "10px",
+              background: "transparent", border: "1px solid var(--border-subtle)",
+              color: "var(--text-muted)", fontSize: "12px", fontWeight: 600,
+              cursor: ending ? "not-allowed" : "pointer", fontFamily: "inherit",
+            }}
+          >
+            <LogOut size={13} /> {ending ? "Ending…" : "End & Get Report"}
+          </button>
         )}
       </aside>
 
@@ -214,7 +248,7 @@ export default function InterviewPage() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
             <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-              Q{questionIndex + 1} of {totalQuestions}
+              Q{questionsAnswered+1} of {totalQuestions}
             </span>
             <div style={{ width: "80px", height: "3px", background: "var(--surface-3)", borderRadius: "3px", overflow: "hidden" }}>
               <div style={{ height: "100%", width: `${progress}%`, background: "linear-gradient(90deg,#7C3AED,#6366F1)", transition: "width 0.5s ease" }} />

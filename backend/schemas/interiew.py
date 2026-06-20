@@ -22,4 +22,5 @@ class SubmitAnswerRequest(BaseModel):
 class SubmitAnswerResponse(BaseModel):
     evaluation: dict[str, Any]
     next_question: str | None
+    next_section: str | None
     interview_complete: bool

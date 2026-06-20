@@ -10,19 +10,16 @@ import CommandPalette from "@/components/ui/command-palette";
 import {
   Mic2, BarChart3, Trophy, AlertTriangle, Plus, ArrowRight, Command, Zap,
 } from "lucide-react";
+import {api, type InterviewSummary} from "@/lib/api";
 
-const PAST_INTERVIEWS = [
-  { id: 1, company: "NVIDIA",    role: "PTX Compiler Intern",    date: "2025-05-28", score: 78, status: "completed" as const, skills: ["Compilers", "C++", "Graphs"] },
-  { id: 2, company: "Amazon",    role: "SDE-1",                  date: "2025-05-25", score: 84, status: "completed" as const, skills: ["Arrays", "DP", "OOP"] },
-  { id: 3, company: "Google",    role: "Software Engineer L3",   date: "2025-05-20", score: 71, status: "completed" as const, skills: ["Graphs", "System Design", "BFS/DFS"] },
-  { id: 4, company: "Meta",      role: "Production Engineer",    date: "2025-05-15", score: 89, status: "completed" as const, skills: ["Linux", "Python", "Infra"] },
-  { id: 5, company: "Microsoft", role: "SWE Intern",             date: "2025-05-10", score: 66, status: "completed" as const, skills: ["Trees", "DP", "APIs"] },
-];
+const CURRENT_USER_ID = 1;
 
 export default function DashboardPage() {
   const router = useRouter();
   const [cmdOpen, setCmdOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [interviews, setInterviews] = useState<InterviewSummary[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setMounted(true);
@@ -33,9 +30,17 @@ export default function DashboardPage() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const avgScore = Math.round(PAST_INTERVIEWS.reduce((a, i) => a + i.score, 0) / PAST_INTERVIEWS.length);
-  const best = [...PAST_INTERVIEWS].sort((a, b) => b.score - a.score)[0];
-  const worst = [...PAST_INTERVIEWS].sort((a, b) => a.score - b.score)[0];
+  useEffect(()=>{
+    api.interviews.list(CURRENT_USER_ID)
+    .then(setInterviews)
+    .catch(err => console.error("Error fetching interviews:", err))
+    .finally(() => setLoading(false));
+  },[])
+
+  const completed = interviews.filter(i => i.score !== null);
+  const avgScore = completed.length > 0 ? Math.round(completed.reduce((a,i) => a + (i.score??0), 0) / completed.length) : 0;
+  const best =  completed.length > 0 ? [...completed].sort((a, b) => (b.score??0) - (a.score??0))[0] : null;
+  const worst = completed.length > 0 ? [...completed].sort((a, b) => (a.score??0) - (b.score??0))[0] : null;
 
   return (
     <AppShell>
@@ -120,14 +125,19 @@ export default function DashboardPage() {
             Start Interview <ArrowRight size={14} />
           </button>
         </div>
-
-        {/* ── Stat cards ── */}
+        { loading && interviews.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "32px" }}>
-          <StatCard id="stat-interviews" label="Total Interviews"  value={PAST_INTERVIEWS.length}   icon={Mic2}         iconColor="#8B5CF6" trend="up"   trendLabel="+2 this week" />
+          <StatCard id="stat-interviews" label="Total Interviews"  value={interviews.length}   icon={Mic2}         iconColor="#8B5CF6" trend="up"   trendLabel="+2 this week" />
           <StatCard id="stat-avg-score"  label="Average Score"    value={`${avgScore}/100`}         icon={BarChart3}    iconColor="#6366F1" trend="up"   trendLabel="+4 pts" />
-          <StatCard id="stat-best"       label="Top Performance"  value={best.company}              icon={Trophy}       iconColor="#22C55E" trend="up"   trendLabel={`${best.score}/100`} />
-          <StatCard id="stat-weak"       label="Needs Attention"  value={worst.company}             icon={AlertTriangle} iconColor="#F59E0B" trend="down" trendLabel={`${worst.score}/100`} />
+          {best && (
+            <StatCard id="stat-best"       label="Top Performance"  value={best.company}              icon={Trophy}       iconColor="#22C55E" trend="up"   trendLabel={`${best.score}/100`} />
+          )}
+          {worst && (
+            <StatCard id="stat-weak"       label="Needs Attention"  value={worst.company}             icon={AlertTriangle} iconColor="#F59E0B" trend="down" trendLabel={`${worst.score}/100`} />
+          )}
         </div>
+        )}
+        {/* ── Stat cards ── */}
 
         {/* ── Interview History ── */}
         <div>
@@ -135,28 +145,36 @@ export default function DashboardPage() {
             <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>
               Interview History
             </h2>
-            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{PAST_INTERVIEWS.length} sessions</span>
+            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{interviews.length} sessions</span>
           </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {PAST_INTERVIEWS.map((interview, i) => (
-              <div
-                key={interview.id}
-                style={{ opacity: mounted ? 1 : 0, transform: mounted ? "translateY(0)" : "translateY(8px)", transition: `all 0.35s ease ${i * 60}ms` }}
-              >
-                <InterviewCard
-                  id={`interview-card-${interview.id}`}
-                  company={interview.company}
-                  role={interview.role}
-                  date={interview.date}
-                  score={interview.score}
-                  status={interview.status}
-                  skills={interview.skills}
-                  onClick={() => router.push(`/report/${interview.id}`)}
-                />
-              </div>
-            ))}
-          </div>
+          {loading ? (
+            <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>Loading...</span>
+          ): interviews.length === 0 ? (
+            <div style={{ padding: "40px", textAlign: "center", color: "var(--text-muted)", fontSize: "13px" }}>
+              No interviews yet. Start your first one above.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {interviews.map((interview, i) => (
+                <div
+                  key={interview.id}
+                  style={{ opacity: mounted ? 1 : 0, transform: mounted ? "translateY(0)" : "translateY(8px)", transition: `all 0.35s ease ${i * 60}ms` }}
+                >
+                  <InterviewCard
+                    id={`interview-card-${interview.id}`}
+                    company={interview.company}
+                    role={interview.role}
+                    date={interview.date}
+                    score={interview.score}
+                    status={interview.status as "in_progress" | "completed" | "scheduled"}
+                    skills={interview.skills}
+                    onClick={() => router.push(interview.status === "completed" ? `/report/${interview.id}` : `/interview/${interview.id}`)}
+                  />
+                </div>
+              ))}
+            </div>
+          )
+          }
         </div>
       </div>
     </AppShell>

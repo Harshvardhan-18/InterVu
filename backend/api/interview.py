@@ -6,6 +6,7 @@ Endpoints:
   GET  /api/interviews/{id}           – get interview state
   POST /api/interviews/{id}/answer    – submit an answer, get next question
   POST /api/interviews/{id}/complete  – mark interview done
+  POST /api/interviews/{id}/end       – end early, generate report based on answers so far
 """
 
 from __future__ import annotations
@@ -146,6 +147,16 @@ async def get_interview(
 ) -> dict[str, Any]:
     """Get the current state of an interview session."""
     interview = await _get_interview_or_404(interview_id, db)
+
+    result = await db.execute(
+        select(Question)
+        .where(Question.interview_id == interview_id)
+        .order_by(Question.order_index.desc())
+        .limit(1)
+    )
+
+    latest_question = result.scalar_one_or_none()
+
     return {
         "id": interview.id,
         "company": interview.company,
@@ -153,6 +164,9 @@ async def get_interview(
         "difficulty": interview.difficulty,
         "status": interview.status,
         "blueprint": interview.blueprint,
+        "current_question": latest_question.question if latest_question else None,
+        "current_question_type": latest_question.question_type if latest_question else None,
+        "current_section": latest_question.section if latest_question else None,
     }
 
 
@@ -175,10 +189,9 @@ async def submit_answer(
 
     config = _graph_config(interview.id)
 
-    await compiled_graph.aupdate_state(
-        config,
-        {"current_answer":body.answer}
-    )
+    current_state = await compiled_graph.aget_state(config)
+    if not current_state or not current_state.values or "blueprint" not in current_state.values:
+        raise HTTPException(status_code=410, detail="This interview's session state was lost (likely due to a server restart). Please start a new interview.")
     
     final_state = await compiled_graph.ainvoke(None, config=config)
 
@@ -223,6 +236,7 @@ async def submit_answer(
         db.add(next_question_row)
         await db.flush()
         next_question = next_q_text
+        next_section = section_name
     else:
         interview.status = "completed"
 
@@ -230,6 +244,7 @@ async def submit_answer(
     return SubmitAnswerResponse(
         evaluation=evaluation,
         next_question=next_question,
+        next_section=next_section,
         interview_complete=interview_complete,
     )
 
@@ -299,5 +314,38 @@ async def end_interview_early(
         "message": "Interview ended early",
         "interview_id": interview_id,
         "questions_answered": len(qa_history),
-        "report": report_data,
+        "overall_score": report_data.get("overall_score", 0),
     }
+
+@router.get("")
+async def list_interviews(
+    user_id:int,
+    db: AsyncSession = Depends(get_db)
+) -> list[dict[str,Any]]:
+    """List all the interviews for a given user,most recent first"""
+    result = await db.execute(
+        select(Interview)
+        .where(Interview.user_id == user_id)
+        .order_by(Interview.created_at.desc())
+    )
+    interviews = result.scalars().all()
+
+    out = []
+    for interview in interviews:
+        report_result = await db.execute(
+            select(Report.overall_score).where(Report.interview_id == interview.id)
+        )
+        overall_score = report_result.scalar_one_or_none()
+        skills:list[str]=[]
+        for section in (interview.blueprint or {}).get("sections",[]):
+            skills.extend(section.get("focus_areas",[])[:2])
+        out.append({
+            "id": interview.id,
+            "company": interview.company,
+            "role": interview.role,
+            "date": interview.created_at.isoformat(),
+            "score": overall_score,
+            "status": interview.status,
+            "skills": skills[:4]
+        })
+    return out
