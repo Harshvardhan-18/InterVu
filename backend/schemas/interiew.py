@@ -24,3 +24,4 @@ class SubmitAnswerResponse(BaseModel):
     next_question: str | None
     next_section: str | None
     interview_complete: bool
+    next_acknowledgment: str | None

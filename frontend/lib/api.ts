@@ -60,6 +60,7 @@ export type SubmitAnswerResponse = {
   next_question: string | null;
   next_section: string | null;
   interview_complete: boolean;
+  next_acknowledgment: string | null;
 };
 
 export type EndInterviewResponse = {
