@@ -155,7 +155,7 @@ async def get_interview(
     result = await db.execute(
         select(Question)
         .where(Question.interview_id == interview_id)
-        .order_by(Question.order_index.desc())
+        .order_by(Question.order_index.asc())
     )
 
     questions = result.scalars().all()

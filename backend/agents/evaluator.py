@@ -46,6 +46,7 @@ class EvaluatorAgent:
         answer: str,
         context: str,
         section: str,
+        question_type: str = "technical"
     ) -> dict[str, Any]:
         """
         Evaluate the candidate's answer.
@@ -67,6 +68,7 @@ class EvaluatorAgent:
             role=role,
             section=section,
             question=question,
+            question_type=question_type,
             answer=answer,
             context=context
         )

@@ -34,7 +34,6 @@ from __future__ import annotations
 from typing import Any, Literal
 from typing_extensions import TypedDict
 from langgraph.graph import END, START, StateGraph
-from langgraph.checkpoint.memory import MemorySaver
 from rag.retriever import RAGRetriever
 from agents.registry import interviewer,evaluator, conductor
 import os
@@ -124,8 +123,6 @@ async def retrieve_context(state: InterviewState) -> dict[str, Any]:
 
 async def generate_question(state: InterviewState) -> dict[str, Any]:
     """Use ConductorAgent to generate the next turn, with full conversation context."""
-    print(f"[DEBUG] generate_question called. qa_history length: {len(state.get('qa_history', []))}")
-    print(f"[DEBUG] qa_history contents: {state.get('qa_history', [])}")
     result = await conductor.next_turn(
         company=state["company"],
         role=state["role"],
@@ -153,6 +150,7 @@ async def evaluate_answer(state: InterviewState) -> dict[str, Any]:
         role=state["role"],
         section=state["current_section"],
         question=state["current_question"],
+        question_type=state["current_question_type"],
         context=state["context"],
         answer=state["current_answer"],
     )

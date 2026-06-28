@@ -1,5 +1,4 @@
 "use client";
-export const dynamic = 'force-dynamic';
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -7,8 +6,7 @@ import AppShell from "@/components/layout/app-shell";
 import ScoreRing from "@/components/ui/score-ring";
 import {
   ArrowRight, CheckCircle2, AlertCircle, BookOpen,
-  TrendingUp, Calendar, ChevronRight, BarChart3,
-  Zap, ArrowLeft,
+  TrendingUp, ChevronRight, BarChart3, ArrowLeft,
 } from "lucide-react";
 import {api, type ReportResponse} from "@/lib/api";
 
