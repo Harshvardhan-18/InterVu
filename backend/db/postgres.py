@@ -83,7 +83,7 @@ class Question(Base):
     interview_id = Column(Integer, ForeignKey("interviews.id", ondelete="CASCADE"), nullable=False)
     question = Column(Text, nullable=False)
     section = Column(String(100), nullable=True)
-    question_type = Column(String(100), nullable=True)  # technical | behavioral | coding
+    question_type = Column(String(100), nullable=True) 
     order_index = Column(Integer, default=0)
 
     interview = relationship("Interview", back_populates="questions")

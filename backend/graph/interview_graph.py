@@ -34,16 +34,14 @@ from __future__ import annotations
 from typing import Any, Literal
 from typing_extensions import TypedDict
 from langgraph.graph import END, START, StateGraph
-from langgraph.checkpoint.memory import MemorySaver
 from rag.retriever import RAGRetriever
-from agents.registry import interviewer,evaluator
+from agents.registry import interviewer,evaluator, conductor
 import os
 from dotenv import load_dotenv
 load_dotenv()
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 _retriever = RAGRetriever()
-
 
 
 # ── State ─────────────────────────────────────────────────────────────────────
@@ -57,13 +55,14 @@ class InterviewState(TypedDict):
 
     # Blueprint
     blueprint: dict[str, Any]
-    current_section_index: int
-    questions_asked_in_section: int
 
     # Current turn
     context: str
     current_question: str
     current_question_type: str
+    current_section:str
+    current_acknowledgment: str
+    current_focus_area: str
     current_answer: str
     evaluation: dict[str, Any]
 
@@ -75,84 +74,83 @@ class InterviewState(TypedDict):
     needs_followup: bool
     followup_question: str | None
     interview_complete: bool
+    llm_suggests_wrap_up: bool
 
 # ── Helper Function ───────────────────────────────────────────────────────────
+MAX_TOTAL_QUESTIONS = 15
+MIN_QUESTIONS_PER_SECTION = 1
 
-def current_section(state: InterviewState) -> dict[str, Any] | None:
-    sections = state["blueprint"].get("sections", [])
-    idx = state["current_section_index"]
-    return sections[idx] if idx < len(sections) else None
+def _sections_covered(blueprint: dict, qa_history: list[dict]) -> set[str]:
+    """Which section names have been asked about at least once."""
+    return {entry["section"] for entry in qa_history}
+
+def _all_sections_covered(blueprint: dict, qa_history: list[dict]) -> bool:
+    all_section_names = {s["name"] for s in blueprint.get("sections", [])}
+    covered = _sections_covered(blueprint, qa_history)
+    return all_section_names.issubset(covered)
+
+def _should_end_interview(blueprint: dict, qa_history: list[dict], llm_suggests_wrap_up: bool) -> bool:
+    total_asked = len(qa_history)
+
+    # Hard ceiling — always stop regardless of LLM opinion
+    if total_asked >= MAX_TOTAL_QUESTIONS:
+        return True
+
+    # Never end before every section has been touched at least once,
+    # even if the LLM wants to wrap up early
+    if not _all_sections_covered(blueprint, qa_history):
+        return False
+
+    # Once minimum coverage is satisfied, trust the LLM's judgment
+    return llm_suggests_wrap_up
 
 # ── Node stubs (wire in real agents when implementing) ─────────────────────────
 
 async def retrieve_context(state: InterviewState) -> dict[str, Any]:
-    """Retrieve relevant context from ChromaDB for current section."""
-    section = current_section(state)
-    if not section:
-        return {"context": ""}
-    focus_areas = section.get("focus_areas", [])
-    query = f"{state['company']} {state['role']} {' '.join(focus_areas)} interview question"
-    
-    chunks = _retriever.retrieve(query=query,company=state["company"], role=state["role"])
-    context = _retriever.format_context(chunks) if chunks else ""
+    """Retrieve relevant context from ChromaDB, blending all section focus areas
+    weighted toward sections not yet covered."""
+    blueprint = state["blueprint"]
+    covered= _sections_covered(blueprint, state["qa_history"])
+    uncovered_sections = [s for s in blueprint.get("sections", []) if s["name"] not in covered]
+
+    target_sections = uncovered_sections or blueprint.get("sections", [])
+    focus_areas = [fa for s in target_sections for fa in s.get("focus_areas", [])]
+
+    query = f"{state['company']} {state['role']} {' '.join(focus_areas[:8])} interview question"
+    chunks = _retriever.retrieve(query, company=state["company"], role=state["role"])
+    context = _retriever.format_context(chunks) if chunks else "No relevant context found."
     return {"context": context}
 
 async def generate_question(state: InterviewState) -> dict[str, Any]:
-    """Use InterviewerAgent to generate the next question."""
-    section = current_section(state)
-    if not section:
-        return {
-            "current_question": "Thank you for your time. The interview is now complete.",
-            "current_question_type": "screening",
-            "current_focus_area": "",
-        }
-    
-    is_very_first_question = (
-        state["current_section_index"] == 0 and state["questions_asked_in_section"] == 0
-    )
-
-    if is_very_first_question:
-        username = state.get("username","")
-        greeting_name = f", {username}" if username else ""
-        return {
-            "current_question": (
-                f"Hi{greeting_name}, welcome! I'll be conducting your interview today "
-                f"for the {state['role']} position at {state['company']}. "
-                f"Before we dive in, I'd love to hear a bit about yourself — "
-                f"your background, what you've been working on recently, and what draws you to this role."
-            ),
-            "current_question_type": "behavioral",
-            "current_focus_area": "introduction",
-        }
-
-    result = await interviewer.generate_question(
+    """Use ConductorAgent to generate the next turn, with full conversation context."""
+    result = await conductor.next_turn(
         company=state["company"],
         role=state["role"],
         username=state["username"],
         context=state["context"],
-        section_name=section.get("name", ""),
-        section_type=section.get("type", ""),
-        focus_areas=section.get("focus_areas", []),
+        blueprint=state["blueprint"],
         difficulty=state["difficulty"],
-        previous_questions=state["previous_questions"],
+        qa_history=state["qa_history"],
     )
 
     return {
         "current_question": result.get("question", "N/A"),
         "current_question_type": result.get("question_type", "N/A"),
         "current_focus_area": result.get("focus_area", ""),
+        "current_section": result.get("section_name", ""),
+        "current_acknowledgment": result.get("acknowledgment", ""),
+        "llm_suggests_wrap_up": result.get("suggests_wrap_up", False)
     }
 
 async def evaluate_answer(state: InterviewState) -> dict[str, Any]:
     """Use EvaluatorAgent to score the answer."""
-    section = current_section(state)
-    section_name = section.get("name", "") if section else ""
 
     evaluation = await evaluator.evaluate(
         company=state["company"],
         role=state["role"],
-        section=section_name,
+        section=state["current_section"],
         question=state["current_question"],
+        question_type=state["current_question_type"],
         context=state["context"],
         answer=state["current_answer"],
     )
@@ -181,55 +179,34 @@ async def adjust_difficulty(state: InterviewState) -> dict[str, Any]:
 
 async def store_result(state: InterviewState) -> dict[str, Any]:
     """Persist Q&A + evaluation and advance section/question counters."""
-    section = current_section(state)
-    section_name = section.get("name", "") if section else ""
-    current_focus_area=section.get("focus_areas", [""])[0] if section else ""
     entry = {
         "question": state["current_question"],
         "question_type": state["current_question_type"],
         "answer": state["current_answer"],
-        "focus_area": current_focus_area,
+        "focus_area": state["current_focus_area"],
         "evaluation": state["evaluation"],
-        "section": section_name,
+        "section": state["current_section"],
     }
 
     new_qa_history = state["qa_history"] + [entry]
     new_previous_questions = state["previous_questions"] + [state["current_question"]]
-    new_asked = state["questions_asked_in_section"] + 1
 
-    sections = state["blueprint"].get("sections", [])
-    idx = state["current_section_index"]
-    current_section_target = section["questions"] if section else 0
+    interview_complete = _should_end_interview(
+        blueprint=state["blueprint"],
+        qa_history=new_qa_history,
+        llm_suggests_wrap_up=state["llm_suggests_wrap_up"]
+    )
 
-    if new_asked >= current_section_target:
-        new_idx = idx + 1
-        if new_idx >= len(sections):
-            return {
-                "qa_history": new_qa_history,
-                "previous_questions": new_previous_questions,
-                "questions_asked_in_section": 0,
-                "interview_complete": True,
-            }
-        return{
-            "qa_history": new_qa_history,
-            "previous_questions": new_previous_questions,
-            "current_section_index": new_idx,
-            "questions_asked_in_section": 0,
-            "interview_complete": False,
-        }
-    return{
+    return {
         "qa_history": new_qa_history,
         "previous_questions": new_previous_questions,
-        "questions_asked_in_section": new_asked,
-        "interview_complete": False,
+        "interview_complete": interview_complete,
     }
 
 
 def should_continue(state: InterviewState) -> Literal["continue", "end"]:
     """Decide whether to ask another question or end the interview."""
-    if state.get("interview_complete"):
-        return "end"
-    return "continue"
+    return "end" if state["interview_complete"] else "continue"
 
 
 # ── Build Graph ────────────────────────────────────────────────────────────────

@@ -104,16 +104,17 @@ async def start_interview(
         "difficulty": difficulty,
         "username": body.username,
         "blueprint": blueprint,
-        "current_section_index": 0,
-        "questions_asked_in_section": 0,
         "context": "",
         "current_question": "",
         "current_question_type": "",
+        "current_section": "",
         "current_focus_area": "",
+        "current_acknowledgment": "",
         "current_answer": "",
         "evaluation": {},
         "previous_questions": [],
         "qa_history": [],
+        "llm_suggests_wrap_up": False,
         "interview_complete": False,
     }
 
@@ -123,11 +124,12 @@ async def start_interview(
 
     first_question = state["current_question"]
     question_type = state.get("current_question_type", "screening")
+    section_name = state.get("current_section", "General")
 
     question = Question(
         interview_id=interview.id,
         question=first_question,
-        section=blueprint["sections"][0]["name"],
+        section=section_name,
         question_type=question_type,
         order_index=0,
     )
@@ -153,7 +155,7 @@ async def get_interview(
     result = await db.execute(
         select(Question)
         .where(Question.interview_id == interview_id)
-        .order_by(Question.order_index.desc())
+        .order_by(Question.order_index.asc())
     )
 
     questions = result.scalars().all()
@@ -211,6 +213,8 @@ async def submit_answer(
     if not current_state or not current_state.values or "blueprint" not in current_state.values:
         raise HTTPException(status_code=410, detail="This interview's session state was lost (likely due to a server restart). Please start a new interview.")
     
+    await compiled_graph.aupdate_state(config, {"current_answer": body.answer})
+
     final_state = await compiled_graph.ainvoke(None, config=config)
 
     evaluation = final_state.get("evaluation", {})
@@ -236,13 +240,14 @@ async def submit_answer(
         await db.flush()
     
     next_question = None
+    next_section = None
+    next_acknowledgment = None
 
     if not interview_complete:
         next_q_type = final_state.get("current_question_type", "screening")
         next_q_text = final_state.get("current_question", "N/A")
-        sections = interview.blueprint.get("sections",[])
-        section_idx = final_state.get("current_section_index", 0)
-        section_name = sections[section_idx]["name"] if section_idx < len(sections) else "unknown"
+        section_name = final_state.get("current_section", "General")
+        next_acknowledgment = final_state.get("current_acknowledgment", "")
         order_index = len(final_state.get("previous_questions", []))
         next_question_row=Question(
             interview_id=interview.id,
@@ -263,6 +268,7 @@ async def submit_answer(
         evaluation=evaluation,
         next_question=next_question,
         next_section=next_section,
+        next_acknowledgment=next_acknowledgment,
         interview_complete=interview_complete,
     )
 

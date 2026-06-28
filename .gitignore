@@ -8,6 +8,7 @@ env/
 *.egg-info/
 dist/
 build/
+tests/
 
 # Env
 .env
@@ -32,3 +33,4 @@ Thumbs.db
 
 # Logs
 *.log
+.f
