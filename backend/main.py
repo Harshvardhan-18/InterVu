@@ -12,6 +12,7 @@ from graph.interview_graph import init_graph,close_graph
 from api.interview import router as interview_router
 from api.report import router as report_router
 from db.postgres import create_tables
+from api.auth import router as auth_router
 
 
 @asynccontextmanager
@@ -42,6 +43,7 @@ app.add_middleware(
 # ── Routers ────────────────────────────────────────────────────────────────────
 app.include_router(interview_router)
 app.include_router(report_router)
+app.include_router(auth_router)
 
 
 @app.get("/health")

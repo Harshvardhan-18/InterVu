@@ -24,9 +24,6 @@ const scoreBg = (s: number) =>
 const gradeLabel = (score: number) =>
   score >= 90 ? "Excellent" : score >= 76 ? "Good" : score >= 61 ? "Average" : score >= 41 ? "Below Average" : "Needs Work";
 
-const gradeColor = (score: number) =>
-  score >= 76 ? "#22C55E" : score >= 61 ? "#F59E0B" : "#EF4444";
-
 
 export default function ReportPage() {
   const router = useRouter();
@@ -81,7 +78,6 @@ export default function ReportPage() {
   const sectionScores = Object.entries(report.report.section_scores);
   const date = new Date(report.created_at).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
   const grade = gradeLabel(report.overall_score);
-  const gColor = gradeColor(report.overall_score);
 
   return (
     <AppShell>

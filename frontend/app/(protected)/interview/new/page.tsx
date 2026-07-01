@@ -7,6 +7,7 @@ import {
   ArrowRight, ArrowLeft, Building2, Briefcase, Gauge,
   Loader2, CheckCircle2, Circle, Search, ChevronRight,
 } from "lucide-react";
+import { auth } from "@/lib/api";
 
 const COMPANIES = [
   { name: "Google",    color: "#4285F4", initials: "G"  },
@@ -46,6 +47,10 @@ export default function NewInterviewPage() {
   const [pipelineStep, setPipelineStep] = useState<PipelineStep | null>(null);
   const [doneSteps, setDoneSteps] = useState<string[]>([]);
 
+  const  user  = auth.load()!;
+  const userId = user?.user_id;
+  const userName = user?.name;
+
   const filteredCompanies = COMPANIES.filter(c =>
     c.name.toLowerCase().includes(companyQuery.toLowerCase())
   );
@@ -57,8 +62,8 @@ export default function NewInterviewPage() {
     setPipelineStep(steps[0]);
     try {
       const resultPromise = api.interviews.start({
-        user_id: 1, // Replace with actual user ID
-        username:"Harsh",
+        user_id: userId!,
+        username:userName!,
         company,
         role,
         difficulty,
@@ -217,7 +222,7 @@ export default function NewInterviewPage() {
                   marginBottom: "16px",
                 }}
               >
-                <Plus size={14} color="#8B5CF6" /> Use "{companyQuery}"
+                <Plus size={14} color="#8B5CF6" /> Use &quot;{companyQuery}&quot;
               </button>
             )}
           </div>
@@ -248,7 +253,7 @@ export default function NewInterviewPage() {
               onKeyDown={(e) => { if (e.key === "Enter" && role.trim()) setStep(3); }}
             />
             <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "20px" }}>
-              Be specific — "SDE-1 Backend" gets better questions than "Engineer"
+              Be specific — &quot;SDE-1 Backend&quot; gets better questions than &quot;Engineer&quot;
             </p>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>

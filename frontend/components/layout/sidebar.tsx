@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   LayoutDashboard,
@@ -11,6 +10,8 @@ import {
   Zap,
   ChevronRight,
 } from "lucide-react";
+import { auth } from "@/lib/api";
+import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/dashboard",       label: "Dashboard",        icon: LayoutDashboard },
@@ -21,11 +22,9 @@ const NAV_ITEMS = [
 ];
 
 export default function Sidebar() {
-  const [pathname, setPathname] = useState("");
-
-  useEffect(() => {
-    setPathname(window.location.pathname);
-  }, []);
+  const user = auth.load();
+  const userName = user?.name;
+  const pathname = usePathname();
 
   return (
     <aside
@@ -162,11 +161,11 @@ export default function Sidebar() {
               flexShrink: 0,
             }}
           >
-            H
+            {userName?.charAt(0) || "U"}
           </div>
           <div style={{ minWidth: 0 }}>
             <p style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              Harshvardhan
+              {userName || "User"}
             </p>
             <p style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.3 }}>Free Plan</p>
           </div>

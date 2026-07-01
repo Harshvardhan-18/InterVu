@@ -144,7 +144,7 @@ export default function InterviewPage() {
 
         <div style={{ padding: "14px", borderRadius: "12px", background: "var(--surface-2)", border: "1px solid var(--border-subtle)" }}>
           <p style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.6 }}>
-            This is a live interview. Answer naturally — there's no fixed structure visible,
+            This is a live interview. Answer naturally — there&apos;s no fixed structure visible,
             just like a real one.
           </p>
         </div>

@@ -63,6 +63,13 @@ export type SubmitAnswerResponse = {
   next_acknowledgment: string | null;
 };
 
+export type LoginResponse = {
+  user_id: number;
+  name: string;
+  email: string;
+  is_new: boolean;
+};
+
 export type EndInterviewResponse = {
   message: string;
   interview_id: number;
@@ -93,7 +100,7 @@ export type InterviewSummary = {
   score: number;
   status: "in_progress" | "completed" | "scheduled";
   skills: string[];
-}
+};
 
 // ── API Methods ───────────────────────────────────────────────────────────────
 
@@ -112,11 +119,20 @@ export const api = {
       }),
 
     get: (id: number) =>
-      request<{ id: number; company: string; role: string; difficulty: string; status: string; blueprint: Blueprint, current_question: string | null, current_question_type: string | null, current_section: string | null, history: HistoryEntry[] }>(
-        `/api/interviews/${id}`
-      ),
+      request<{
+        id: number;
+        company: string;
+        role: string;
+        difficulty: string;
+        status: string;
+        blueprint: Blueprint;
+        current_question: string | null;
+        current_question_type: string | null;
+        current_section: string | null;
+        history: HistoryEntry[];
+      }>(`/api/interviews/${id}`),
 
-    list: (user_id:number) =>
+    list: (user_id: number) =>
       request<InterviewSummary[]>(`/api/interviews?user_id=${user_id}`),
 
     submitAnswer: (id: number, answer: string) =>
@@ -128,7 +144,7 @@ export const api = {
     complete: (id: number) =>
       request<{ message: string; interview_id: number; overall_score: number }>(
         `/api/interviews/${id}/complete`,
-        { method: "POST" }
+        { method: "POST" },
       ),
 
     endEarly: (id: number) =>
@@ -144,7 +160,35 @@ export const api = {
     generate: (interviewId: number) =>
       request<{ message: string; report: ReportResponse["report"] }>(
         `/api/reports/${interviewId}`,
-        { method: "POST" }
+        { method: "POST" },
       ),
+  },
+
+  auth: {
+    login: (body: { name: string; email: string }) =>
+      request<LoginResponse>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+  },
+};
+
+export const auth = {
+  save: (data: LoginResponse) => {
+    localStorage.setItem("intervu_user", JSON.stringify(data));
+  },
+
+  load: (): LoginResponse | null => {
+    if (typeof window === "undefined") return null;
+    const raw = localStorage.getItem("intervu_user");
+    return raw ? JSON.parse(raw) : null;
+  },
+
+  clear: () => {
+    localStorage.removeItem("intervu_user");
+  },
+
+  isLoggedIn: (): boolean => {
+    return !!auth.load();
   },
 };
