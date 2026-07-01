@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Environment files — never bake secrets into the image
+.env
+.env.*
+
+# ChromaDB data — this is runtime data, not source code
+chroma_db/
+
+# Tests
+tests/
+
+# Git
+.git/
+.gitignore
+
+# Dev tools
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Alembic versions (optional — include if you want migrations in the image)
+# alembic/versions/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
