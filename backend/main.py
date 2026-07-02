@@ -5,6 +5,9 @@ InterVu FastAPI Application Entry Point
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import os
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables from .env file
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,7 +37,7 @@ app = FastAPI(
 # ── CORS ───────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js dev server
+    allow_origins=[os.getenv("FRONTEND_URL") ,"http://localhost:3000"],  # Next.js dev server
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
