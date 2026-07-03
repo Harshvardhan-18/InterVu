@@ -1,82 +1,162 @@
 # InterVu
 
-An AI-powered interview preparation platform.
+An AI-powered mock interview platform that researches real companies, generates adaptive interview questions grounded in actual interview experiences, and provides detailed performance feedback.
 
-## Project Structure
+## How It Works
 
-```
+1. **Research** — Tavily searches the web for company-specific interview experiences, Firecrawl scrapes the content, and an LLM extracts structured knowledge (topics, rounds, DSA patterns, difficulty)
+2. **Blueprint** — A conductor agent generates an interview plan based on the extracted knowledge, covering all relevant sections (Screening, Coding, System Design, Behavioral)
+3. **Interview** — A conversational conductor agent runs the interview turn-by-turn, seeing the full conversation history and adapting questions based on your answers
+4. **Evaluation** — Each answer is scored across correctness, depth, communication, and problem-solving
+5. **Report** — A feedback agent generates a comprehensive report with section scores, strong/weak areas, and study recommendations
+
+---
+
+# Project Structure
+
+```text
 InterVu/
-├── frontend/          # Next.js 15 + TypeScript + Tailwind + shadcn/ui
-└── backend/           # Python + FastAPI + LangGraph + ChromaDB
-    ├── agents/        # Interviewer, Evaluator, Feedback, Extractor
-    ├── graph/         # LangGraph interview state machine
-    ├── rag/           # ChromaDB vector store + retriever + embeddings
-    ├── search/        # Tavily + Firecrawl research pipeline
-    ├── db/            # PostgreSQL models (SQLAlchemy async)
-    ├── api/           # FastAPI routers
-    └── main.py        # App entrypoint
+├── frontend/                    # Next.js 16 + TypeScript + TailwindCSS
+│   └── app/
+│       ├── login/               # Auth page
+│       ├── (protected)/         # Auth-guarded pages
+│       │   ├── dashboard/       # Interview history + stats
+│       │   ├── interview/
+│       │   │   ├── new/         # 4-step interview wizard
+│       │   │   └── [id]/        # Live interview session (chat UI)
+│       │   └── report/[id]/     # Post-interview feedback report
+│       └── layout.tsx
+└── backend/                     # FastAPI + LangGraph + ChromaDB
+    ├── agents/
+    │   ├── conductor.py         # Conversational interview conductor (main agent)
+    │   ├── evaluator.py         # Answer scoring (correctness/depth/communication/problem-solving)
+    │   ├── feedback.py          # Post-interview report generation
+    │   ├── extractor.py         # Structured knowledge extraction from web content
+    │   └── blueprint.py         # Interview plan generation
+    ├── graph/
+    │   └── interview_graph.py   # LangGraph state machine (Postgres-backed checkpointing)
+    ├── rag/
+    │   ├── vector_store.py      # ChromaDB document ingestion
+    │   ├── retriever.py         # Semantic search for question context
+    │   └── embeddings.py        # sentence-transformers / Google embeddings
+    ├── search/
+    │   ├── tavily.py            # Multi-category web search (concurrent)
+    │   ├── firecrawl.py         # Full-page markdown scraping (concurrent)
+    │   └── anakin.py            # Reddit thread scraping
+    ├── normalization/           # Round name canonicalization, dedup, fuzzy matching
+    ├── pipeline.py              # End-to-end research pipeline (fully async)
+    ├── db/postgres.py           # PostgreSQL models (SQLAlchemy async)
+    ├── api/
+    │   ├── interview.py         # /start, /answer, /end, /complete
+    │   ├── report.py            # /reports/:id
+    │   └── auth.py              # /auth/login (email-based, no password)
+    └── main.py                  # FastAPI app + lifespan (DB + graph init)
 ```
 
-## Getting Started
+---
 
-### 1. Backend Setup
+# Getting Started
+
+## 1. Backend Setup
 
 ```bash
 cd backend
 
-# Create virtual environment
 python -m venv .venv
-.venv\Scripts\activate        # Windows
-# source .venv/bin/activate   # macOS/Linux
 
-# Install dependencies
+# Windows
+.venv\Scripts\activate
+
+# macOS/Linux
+# source .venv/bin/activate
+
 pip install -r requirements.txt
 
-# Copy and fill in env vars
-copy .env.example .env
+# Copy and fill in environment variables
+cp .env.example .env
 
-# Run the API server
+# Start PostgreSQL + ChromaDB
+docker-compose up -d
+
+# Run the backend
 uvicorn main:app --reload --port 8000
 ```
 
-### 2. Frontend Setup
+---
+
+## 2. Frontend Setup
 
 ```bash
 cd frontend
+
 npm install
 npm run dev
 ```
 
-### 3. PostgreSQL
+Frontend runs at:
 
-Make sure PostgreSQL is running locally (or update `DATABASE_URL` in `.env`).
+```text
+http://localhost:3000
+```
 
-Tables are auto-created on first startup via SQLAlchemy.
+---
 
-### 4. API Keys Required
+## 3. Environment Variables
 
-| Key | Where to get |
-|-----|-------------|
-| `GOOGLE_API_KEY` | [Google AI Studio](https://aistudio.google.com/) |
-| `TAVILY_API_KEY` | [Tavily](https://tavily.com/) |
-| `FIRECRAWL_API_KEY` | [Firecrawl](https://firecrawl.dev/) |
+### backend/.env
 
-## Models Used
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | `postgresql+asyncpg://postgres:postgres@localhost:5432/intervu` |
+| `DATABASE_URL_PSYCOPG` | `postgresql://postgres:postgres@localhost:5432/intervu` |
+| `GOOGLE_API_KEY` | Google AI Studio — Blueprint, Evaluator, Feedback agents |
+| `GROQ_API_KEY` | Groq — Extractor, Conductor agents |
+| `TAVILY_API_KEY` | Tavily — Web search |
+| `FIRECRAWL_API_KEY` | Firecrawl — Web scraping |
+| `ANAKIN_API_KEY` | Anakin — Reddit scraping |
+| `EMBEDDING_PROVIDER` | `sentence-transformers` (default, local) or `google` (API-based) |
 
-| Agent | Model |
-|-------|-------|
-| Interviewer | `gemini-2.5-flash` |
-| Extractor | `gemini-2.5-flash` |
-| Evaluator | `gemini-2.5-pro` |
-| Feedback | `gemini-2.5-pro` |
+### frontend/.env.local
 
-## Tech Stack
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+---
+
+# Models Used
+
+| Agent | Model | Provider |
+|-------|-------|----------|
+| Conductor (interviewer) | `llama-3.3-70b-versatile` | Groq |
+| Extractor | `llama-3.3-70b-versatile` | Groq |
+| Blueprint generator | `llama-3.3-70b-versatile` | Groq |
+| Evaluator | `gemini-2.5-flash-preview-05-20` | Google |
+| Feedback | `gemini-2.5-flash-preview-05-20` | Google |
+
+---
+
+# Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 15, TypeScript, Tailwind CSS, shadcn/ui |
-| Backend | Python, FastAPI, LangGraph |
-| AI | Gemini 2.5 Flash & Pro |
-| Vector DB | ChromaDB + sentence-transformers |
-| Relational DB | PostgreSQL (async SQLAlchemy) |
-| Search | Tavily + Firecrawl |
+| Frontend | Next.js 16, TypeScript, TailwindCSS |
+| Backend | Python 3.11, FastAPI, LangGraph |
+| AI Agents | Groq (Llama 3.3), Google Gemini 2.5 Flash |
+| Embeddings | sentence-transformers (`BAAI/bge-small-en-v1.5`) or Google `text-embedding-004` |
+| Vector DB | ChromaDB (local persistent) |
+| Graph State | LangGraph + AsyncPostgresSaver (Postgres-backed checkpointing) |
+| Relational DB | PostgreSQL (async SQLAlchemy + asyncpg) |
+| Web Research | Tavily (search) + Firecrawl (scraping) + Anakin (Reddit) |
+| Auth | Email-based identity (no password), localStorage session |
+| Containerization | Docker + docker-compose |
+
+---
+
+# Key Architecture Decisions
+
+- **Conductor agent over rigid scripts** — the interview is driven by a single LLM agent that sees the full conversation history, the blueprint, and a coverage summary, making it feel like a real conversation rather than a question list.
+- **Async throughout** — Tavily (11 concurrent searches), Firecrawl + Anakin (concurrent scraping), LLM calls all use `asyncio.gather` / `ainvoke`.
+- **Postgres-backed graph checkpointing** — `AsyncPostgresSaver` means in-progress interviews survive server restarts.
+- **Research caching** — `ResearchProfile` table caches pipeline output per company/role, so repeat interviews reuse the same knowledge base without re-running the expensive pipeline.
+- **Section coverage guardrails** — the conductor is given explicit coverage status per section and a per-section question cap, ensuring all areas of the interview are visited even if the conversation gravitates toward one topic.
