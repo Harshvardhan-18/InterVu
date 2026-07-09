@@ -117,7 +117,7 @@ async def retrieve_context(state: InterviewState) -> dict[str, Any]:
     focus_areas = [fa for s in target_sections for fa in s.get("focus_areas", [])]
 
     query = f"{state['company']} {state['role']} {' '.join(focus_areas[:8])} interview question"
-    chunks = _retriever.retrieve(query, company=state["company"], role=state["role"])
+    chunks = await _retriever.retrieve(query, company=state["company"], role=state["role"])
     context = _retriever.format_context(chunks) if chunks else "No relevant context found."
     return {"context": context}
 
@@ -247,8 +247,11 @@ def build_interview_graph() -> StateGraph:
 
     return graph
 
-_checkpointer_cm = None
-compiled_graph:Any = None
+from psycopg_pool import AsyncConnectionPool
+from psycopg.rows import dict_row
+
+_pool: AsyncConnectionPool | None = None
+compiled_graph: Any = None
 
 async def init_graph():
     """
@@ -256,14 +259,22 @@ async def init_graph():
     Initializes a Postgres-backed checkpointer so interview sessions survive
     server restarts, and compiles the graph.
     """
-    global _checkpointer_cm, compiled_graph
+    global _pool, compiled_graph
 
     conn_string = os.getenv("DATABASE_URL_PSYCOPG")
     if not conn_string:
         raise ValueError("DATABASE_URL_PSYCOPG environment variable is not set.")
 
-    _checkpointer_cm = AsyncPostgresSaver.from_conn_string(conn_string=conn_string)
-    checkpointer = await _checkpointer_cm.__aenter__()
+    _pool = AsyncConnectionPool(
+        conninfo=conn_string,
+        kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row},
+        min_size=1,
+        max_size=10,
+        open=False,
+    )
+    await _pool.open()
+
+    checkpointer = AsyncPostgresSaver(conn=_pool)
     await checkpointer.setup()
 
     graph = build_interview_graph()
@@ -271,20 +282,19 @@ async def init_graph():
         checkpointer=checkpointer,
         interrupt_after=["generate_question"]
     )
-    print("[graph] Interview graph initialized and compiled with Postgres checkpointer.")
+    print("[graph] Interview graph initialized and compiled with Postgres checkpointer pool.")
     return compiled_graph
-    
     
     
 async def close_graph():
     """
     Call once at FastAPI shutdown (in the lifespan handler).
-    Closes the Postgres-backed checkpointer.
+    Closes the Postgres-backed checkpointer pool.
     """
-    global _checkpointer_cm
-    if _checkpointer_cm:
-        await _checkpointer_cm.__aexit__(None, None, None)
-        print("[graph] Interview graph checkpointer closed.")
+    global _pool
+    if _pool:
+        await _pool.close()
+        print("[graph] Interview graph checkpointer pool closed.")
 
 def get_compiled_graph():
     """

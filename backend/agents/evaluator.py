@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 from typing import Any
 import os 
+from config import EvaluatorModel as model
 from dotenv import load_dotenv
 from pydantic import ValidationError
 load_dotenv()  # Load GROQ_API_KEY from .env file
@@ -35,8 +36,8 @@ FALLBACK_EVALUATION = {
 class EvaluatorAgent:
     """Evaluates a candidate's answer and returns a structured score."""
 
-    def __init__(self, model: str = "llama-3.3-70b-versatile") -> None:
-        self.llm = ChatGroq(model=model, api_key=os.getenv("GROQ_API_KEY"))
+    def __init__(self, model: str = model) -> None:
+        self.llm = ChatGroq(model=model, api_key=os.getenv("GROQ_API_KEY_2"))
 
     async def evaluate(
         self,

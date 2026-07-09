@@ -6,6 +6,7 @@ Queries ChromaDB to retrieve relevant context for interview question generation.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import chromadb
@@ -19,7 +20,7 @@ class RAGRetriever:
 
     def __init__(
         self,
-        collection_name: str = "intervu_kb",
+        collection_name: str = "intervu_kb_v2",
         chroma_path: str = "./chroma_db",
         n_results: int = 5,
     ) -> None:
@@ -30,7 +31,7 @@ class RAGRetriever:
         )
         self.n_results = n_results
 
-    def retrieve(
+    async def retrieve(
         self,
         query: str,
         company: str | None = None,
@@ -57,8 +58,11 @@ class RAGRetriever:
         if source_type:
             where["source"] = source_type
 
+        # Generate query embeddings asynchronously using the pool's async method
+        query_embeddings = [await get_embedding_function().aembed_query(query)]
+
         kwargs: dict[str, Any] = {
-            "query_texts": [query],
+            "query_embeddings": query_embeddings,
             "n_results": self.n_results,
             "include": ["documents", "metadatas", "distances"],
         }
@@ -67,7 +71,8 @@ class RAGRetriever:
         elif len(where) > 1:
             kwargs["where"] = {"$and": [{k: v} for k, v in where.items()]}
 
-        results = self.collection.query(**kwargs)
+        # Query collection synchronously inside a thread pool to avoid blocking the event loop
+        results = await asyncio.to_thread(self.collection.query, **kwargs)
 
         chunks = []
         for doc, meta, dist in zip(

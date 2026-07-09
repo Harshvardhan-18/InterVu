@@ -6,7 +6,7 @@ interview plan stored in PostgreSQL.
 """
 
 from __future__ import annotations
-
+from config import BlueprintModel as model
 from typing import Any
 from pydantic import ValidationError
 from schemas.blueprint import Blueprint, BlueprintSection
@@ -84,8 +84,8 @@ SECTION_DEFAULTS = {
 class BlueprintGenerator:
     """Generates a structured interview blueprint from extracted knowledge."""
 
-    def __init__(self, model: str = "llama-3.3-70b-versatile") -> None:
-        self.llm = ChatGroq(model=model,api_key=os.getenv("GROQ_API_KEY"))
+    def __init__(self, model: str = model) -> None:
+        self.llm = ChatGroq(model=model,api_key=os.getenv("GROQ_API_KEY_2"))
     
     def _fallback(self,difficulty:str)->dict[str,Any]:
         sections= SECTION_DEFAULTS.get(difficulty, SECTION_DEFAULTS["medium"])

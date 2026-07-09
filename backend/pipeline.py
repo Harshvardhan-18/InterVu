@@ -168,7 +168,7 @@ class ResearchPipeline:
         chunks_added = 0
         for item in all_content:
             if item.get("content"):
-                chunks_added += self.vector_store.add_document(
+                chunks_added += await self.vector_store.add_document(
                     text=item["content"],
                     metadata={
                         "company": company,

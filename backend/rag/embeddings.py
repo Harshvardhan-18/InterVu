@@ -1,38 +1,22 @@
 """
 Embeddings
 ----------
-Returns a ChromaDB-compatible embedding function.
-Defaults to sentence-transformers/BAAI/bge-small-en-v1.5 (local, free).
-Can be swapped to Google text-embedding-004 via env var.
+Returns a Google-API-based Embedding function using GoogleEmbedPool.
 """
 
 from __future__ import annotations
 
-import os
-
 from chromadb import EmbeddingFunction
+from utils.google_embed_pool import GoogleEmbedPool
+
+_embedding_function: GoogleEmbedPool | None = None
 
 
 def get_embedding_function() -> EmbeddingFunction:
     """
-    Return the appropriate embedding function based on environment.
-
-    Set EMBEDDING_PROVIDER=google to use text-embedding-004.
-    Defaults to sentence-transformers/BAAI/bge-small-en-v1.5.
+    Return the singleton GoogleEmbedPool embedding function.
     """
-    provider = os.getenv("EMBEDDING_PROVIDER", "sentence-transformers")
-
-    if provider == "google":
-        from chromadb.utils.embedding_functions import GoogleGenerativeAiEmbeddingFunction
-
-        return GoogleGenerativeAiEmbeddingFunction(
-            api_key=os.environ["GOOGLE_API_KEY"],
-            model_name="models/text-embedding-004",
-        )
-
-    # Default: local sentence-transformers
-    from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
-
-    return SentenceTransformerEmbeddingFunction(
-        model_name="BAAI/bge-small-en-v1.5"
-    )
+    global _embedding_function
+    if _embedding_function is None:
+        _embedding_function = GoogleEmbedPool()
+    return _embedding_function

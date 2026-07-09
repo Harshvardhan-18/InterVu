@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from pydantic import ValidationError
 import json
 from langchain_groq import ChatGroq
+from config import ConductorModel as model
 from prompts.interviewer import INTERVIEWER_PROMPT
 from schemas.question import Question
 load_dotenv()
@@ -35,8 +36,8 @@ FALLBACK_QUESTIONS = {
 class InterviewerAgent:
     """Generates contextual interview questions using Gemini/Groq."""
 
-    def __init__(self, model: str = "llama-3.3-70b-versatile") -> None:
-        self.llm = ChatGroq(model=model, api_key=os.getenv("GROQ_API_KEY"))
+    def __init__(self, model: str = model) -> None:
+        self.llm = ChatGroq(model=model, api_key=os.getenv("GROQ_API_KEY_2"))
 
     def _fallback(self,section:str)->dict[str,Any]:
         q_type=SECTION_TYPE_FALLBACK.get(section.lower(),"technical")

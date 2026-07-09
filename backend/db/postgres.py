@@ -137,7 +137,7 @@ class Report(Base):
 
 # ── Engine & Session ───────────────────────────────────────────────────────────
 
-engine = create_async_engine(DATABASE_URL, echo=False)
+engine = create_async_engine(DATABASE_URL, echo=False, connect_args={"ssl":"require"})
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 

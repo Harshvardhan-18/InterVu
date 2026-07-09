@@ -6,6 +6,7 @@ Runs after the full interview to produce a comprehensive performance report.
 from __future__ import annotations
 import json
 import os
+from config import FeedbackModel as model
 from typing import Any
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
@@ -27,10 +28,10 @@ FALLBACK_REPORT = {
 class FeedbackAgent:
     """Generates a post-interview feedback report."""
 
-    def __init__(self, model: str = "llama-3.3-70b-versatile") -> None:
+    def __init__(self, model: str = model) -> None:
         self.llm = ChatGroq(
             model=model,
-            api_key=os.getenv("GROQ_API_KEY")
+            api_key=os.getenv("GROQ_API_KEY_2")
         )
 
     async def generate_report(

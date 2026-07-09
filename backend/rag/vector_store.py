@@ -6,6 +6,7 @@ Handles chunking, embedding, and upserting documents into ChromaDB.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 from typing import Any
 import chromadb
@@ -41,7 +42,7 @@ class VectorStore:
 
     def __init__(
         self,
-        collection_name: str = "intervu_kb",
+        collection_name: str = "intervu_kb_v2",
         chroma_path: str = "./chroma_db",
     ) -> None:
         self.client = chromadb.PersistentClient(path=chroma_path)
@@ -50,7 +51,7 @@ class VectorStore:
             embedding_function=get_embedding_function(),
         )
 
-    def add_document(
+    async def add_document(
         self,
         text: str,
         metadata: dict[str, Any],
@@ -78,9 +79,15 @@ class VectorStore:
             documents.append(chunk)
             metadatas.append({**metadata, "chunk_index": i,"total_chunks": len(chunks), "source_url": source_url})
 
-        self.collection.upsert(
+        # Generate embeddings asynchronously using the pool's async method
+        embeddings = await get_embedding_function().aembed_documents(documents)
+
+        # Call collection.upsert synchronously inside a thread pool to avoid blocking the event loop
+        await asyncio.to_thread(
+            self.collection.upsert,
             ids=ids,
             documents=documents,
+            embeddings=embeddings,
             metadatas=metadatas,
         )
         return len(chunks)

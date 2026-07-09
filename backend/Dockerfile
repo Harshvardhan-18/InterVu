@@ -34,10 +34,6 @@ COPY . .
 # Create directory for ChromaDB persistent storage
 RUN mkdir -p /app/chroma_db
 
-# Pre-download sentence-transformers model so it's baked into the image
-# (avoids cold-start download on first request in production)
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-en-v1.5')"
-
 # Non-root user for security
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser

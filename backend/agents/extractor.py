@@ -10,18 +10,22 @@ from collections import Counter
 from typing import Any
 import json
 import os
+from config import ExtractorModel as model
 import asyncio
 from prompts.extractor import EXTRACTOR_PROMPT
 from dotenv import load_dotenv
-from langchain_groq import ChatGroq
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 from schemas.extractor import ExtractionResult
+from utils.groq_pool import GroqKeyPool
 load_dotenv()  # Load GROQ_API_KEY from .env file
+
+MAX_CONTENT_CHARS = 16000
 
 class ExtractorAgent:
     """Extracts structured interview knowledge from raw web content."""
 
-    def __init__(self, model: str = "llama-3.3-70b-versatile") -> None:
-        self.llm = ChatGroq(model=model,api_key=os.getenv("GROQ_API_KEY"))
+    def __init__(self, model: str = model) -> None:
+        self.llm = GroqKeyPool(model=model).get()
 
     async def extract(self, company: str, role: str, raw_content: list[dict[str, Any]]) -> dict[str, Any]:
         partials = await asyncio.gather(
@@ -29,7 +33,16 @@ class ExtractorAgent:
         )
         return self.merge_results(list(partials))
     
-    async def extract_doc(self,company:str,role:str,doc:dict[str,Any]) -> dict[str,Any]:
+    @retry(
+        wait=wait_exponential(multiplier=1, min=10, max=60),  # 25s → 50s → 60s
+        stop=stop_after_attempt(3),
+        reraise=True,
+    )
+    async def extract_doc(self, company: str, role: str, doc: dict[str, Any]) -> dict[str, Any]:
+        # Truncate content to stay within TPM budget
+        content = doc.get("content", "")
+        if len(content) > MAX_CONTENT_CHARS:
+            content = content[:MAX_CONTENT_CHARS] + "\n...[truncated for length]"
         prompt = EXTRACTOR_PROMPT.format(
             company=company,
             role=role,
@@ -37,27 +50,19 @@ class ExtractorAgent:
             category=doc.get("category", "unknown"),
             title=doc.get("title", "unknown"),
             url=doc.get("url", "unknown"),
-            content=doc.get("content", "")
+            content=content,
         )
-        
         try:
             response = await self.llm.ainvoke(prompt)
             raw = response.content.strip()
-            print(f"[extractor] RAW RESPONSE:")
-            print(raw[:500])
-            start = raw.find("{")
-            end = raw.rfind("}")
+            start, end = raw.find("{"), raw.rfind("}")
             if start == -1 or end == -1:
-                raise ValueError(
-                    f"[extractor] No JSON found in response:\n{raw[:500]}"
-                )
-            json_text = raw[start:end + 1]
-            data = json.loads(json_text)
-            validated = ExtractionResult(**data)
+                raise ValueError(f"No JSON in response: {raw[:300]}")
+            validated = ExtractionResult(**json.loads(raw[start:end + 1]))
             return validated.model_dump()
         except Exception as e:
-            print(f"[extractor] Error occurred while invoking LLM: {e}")
-            return ExtractionResult().model_dump()
+            print(f"[extractor] LLM error: {e}")
+            raise   # let tenacity retry
 
     def merge_results(self,partials:list[dict[str,Any]])->dict[str,Any]:
         skills = set()

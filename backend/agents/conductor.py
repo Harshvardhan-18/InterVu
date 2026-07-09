@@ -17,6 +17,8 @@ from langchain_groq import ChatGroq
 from pydantic import ValidationError
 from prompts.conductor import CONDUCTOR_PROMPT
 from schemas.conductor import ConductorTurn
+from config import ConductorModel as model
+
 load_dotenv()
 
 MAX_QUESTIONS_PER_SECTION = 3
@@ -75,8 +77,8 @@ def _format_conversation_history(qa_history: list[dict[str, Any]]) -> str:
 class ConductorAgent:
     """Generates the next interview turn with full context of the conversation."""
 
-    def __init__(self, model: str = "llama-3.3-70b-versatile") -> None:
-        self.llm = ChatGroq(model=model, api_key=os.getenv("GROQ_API_KEY"))
+    def __init__(self, model:str = model) -> None:
+        self.llm = ChatGroq(model=model, api_key=os.getenv("GROQ_API_KEY_2"))
 
     async def next_turn(
         self,
