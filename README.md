@@ -130,10 +130,10 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 | Agent | Model | Provider |
 |-------|-------|----------|
 | Conductor (interviewer) | `llama-3.3-70b-versatile` | Groq |
-| Extractor | `llama-3.3-70b-versatile` | Groq |
+| Extractor | `meta-llama/llama-4-scout-17b-16e-instruct` | Groq |
 | Blueprint generator | `llama-3.3-70b-versatile` | Groq |
-| Evaluator | `gemini-2.5-flash-preview-05-20` | Google |
-| Feedback | `gemini-2.5-flash-preview-05-20` | Google |
+| Evaluator | `openai/gpt-oss-120b` | Google |
+| Feedback | `openai/gpt-oss-120b` | Google |
 
 ---
 
