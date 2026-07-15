@@ -11,6 +11,7 @@ An AI-powered mock interview platform that researches real companies, generates 
 5. **Report** — A feedback agent generates a comprehensive report with section scores, strong/weak areas, and study recommendations
 
 ---
+<img width="6838" height="4304" alt="Untitled-2026-06-16-1614" src="https://github.com/user-attachments/assets/a11082f2-0db6-4d18-b936-51be2f68eba1" />
 
 # Project Structure
 
