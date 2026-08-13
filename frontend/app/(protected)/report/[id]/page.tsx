@@ -81,7 +81,7 @@ export default function ReportPage() {
 
   return (
     <AppShell>
-      <div style={{ padding: "32px", maxWidth: "900px" }}>
+      <div className="dash-content" style={{ padding: "32px", maxWidth: "900px" }}>
 
         {/* Back */}
         <button
@@ -120,7 +120,7 @@ export default function ReportPage() {
         </div>
 
         {/* ── Hero score card ── */}
-        <div style={{
+        <div className="report-hero-card" style={{
           borderRadius: "20px", padding: "36px",
           background: "linear-gradient(135deg, rgba(104,169,186,0.12) 0%, rgba(104,169,186,0.08) 50%, rgba(9,9,11,0) 100%)",
           border: "1px solid rgba(104,169,186,0.2)",
@@ -131,8 +131,8 @@ export default function ReportPage() {
 
           <ScoreRing score={report.overall_score} size={140} strokeWidth={10} />
 
-          <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+          <div className="report-hero-info" style={{ flex: 1, minWidth: 0 }}>
+            <div className="report-hero-header" style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px", flexWrap: "wrap" }}>
               <h2 style={{ fontSize: "20px", fontWeight: 800, color: "var(--text-primary)" }}>Overall Performance</h2>
               <span style={{
                 fontSize: "11px", fontWeight: 700, padding: "3px 10px", borderRadius: "6px",
@@ -192,7 +192,7 @@ export default function ReportPage() {
         )}
 
         {/* ── Strong / Weak ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+        <div className="report-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
           {/* Strengths */}
           <div style={{ background: "var(--surface-1)", border: "1px solid rgba(34,197,94,0.15)", borderRadius: "18px", padding: "22px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
@@ -254,7 +254,7 @@ export default function ReportPage() {
         )}
 
         {/* ── Actions ── */}
-        <div style={{ display: "flex", gap: "12px" }}>
+        <div className="report-actions" style={{ display: "flex", gap: "12px" }}>
           <button
             id="new-interview-btn"
             onClick={() => router.push("/interview/new")}

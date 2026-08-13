@@ -342,6 +342,37 @@ body {
   .chat-input-hint {
     display: none !important;
   }
+
+  /* Report page: hero card vertical layout on mobile */
+  .report-hero-card {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 24px 16px !important;
+    gap: 20px !important;
+  }
+
+  .report-hero-header {
+    justify-content: center !important;
+  }
+
+  .report-hero-info p {
+    max-width: 100% !important;
+  }
+
+  .report-hero-info > div:last-child {
+    justify-content: center !important;
+  }
+
+  /* Report page: 2-column grids stack on mobile */
+  .report-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Report page: actions stack on mobile */
+  .report-actions {
+    flex-direction: column !important;
+  }
 }
 
 @media (max-width: 400px) {
