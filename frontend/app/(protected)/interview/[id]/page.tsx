@@ -128,7 +128,7 @@ export default function InterviewPage() {
     <div style={{ display: "flex", height: "100vh", background: "var(--bg-base)", overflow: "hidden" }}>
 
       {/* ── Left Sidebar — minimal, no structure exposed ── */}
-      <aside style={{
+      <aside className="interview-sidebar" style={{
         width: "200px", flexShrink: 0, display: "flex", flexDirection: "column",
         borderRight: "1px solid var(--border-subtle)", background: "var(--surface-1)",
         padding: "20px 16px", gap: "24px",
@@ -353,7 +353,7 @@ export default function InterviewPage() {
               </div>
             </div>
           )}
-          <p style={{ fontSize: "11px", color: "var(--text-muted)", textAlign: "center", marginTop: "8px" }}>
+          <p className="chat-input-hint" style={{ fontSize: "11px", color: "var(--text-muted)", textAlign: "center", marginTop: "8px" }}>
             Enter to send · Shift+Enter for new line
           </p>
         </div>

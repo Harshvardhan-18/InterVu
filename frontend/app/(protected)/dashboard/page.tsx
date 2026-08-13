@@ -68,14 +68,16 @@ export default function DashboardPage() {
     <AppShell>
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
 
-      <div style={{ padding: "32px", maxWidth: "1100px" }}>
+      <div className="dash-content" style={{ padding: "32px", maxWidth: "1100px" }}>
         {/* ── Top bar ── */}
         <div
+          className="dash-topbar"
           style={{
             display: "flex",
             alignItems: "flex-start",
             justifyContent: "space-between",
             marginBottom: "32px",
+            gap: "16px",
           }}
         >
           <div>
@@ -101,9 +103,10 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <div className="dash-topbar-actions" style={{ display: "flex", gap: "10px", alignItems: "center", flexShrink: 0 }}>
             <button
               onClick={() => setCmdOpen(true)}
+              className="dash-cmd-btn"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -272,6 +275,7 @@ export default function DashboardPage() {
         </div>
         {!loading && interviews.length > 0 && (
           <div
+            className="stat-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(4, 1fr)",

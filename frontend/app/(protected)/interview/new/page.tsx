@@ -95,7 +95,7 @@ export default function NewInterviewPage() {
 
   return (
     <AppShell>
-      <div style={{ padding: "40px 32px", maxWidth: "680px" }}>
+      <div className="dash-content" style={{ padding: "40px 32px", maxWidth: "680px" }}>
 
         {/* Back */}
         <button
@@ -178,7 +178,7 @@ export default function NewInterviewPage() {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px", marginBottom: "24px" }}>
+            <div className="company-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px", marginBottom: "24px" }}>
               {filteredCompanies.map((c) => {
                 const selected = company === c.name;
                 return (

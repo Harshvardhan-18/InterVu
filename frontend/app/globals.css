@@ -290,3 +290,65 @@ body {
   background-size: 300% 300%;
   animation: gradient-shift 4s ease infinite;
 }
+
+/* ─── Mobile Responsiveness ──────────────────────────────────────────── */
+
+/* Show sidebar close button on mobile */
+@media (max-width: 767px) {
+  .sidebar-close-btn {
+    display: flex !important;
+  }
+
+  /* Dashboard: full-width padding on small screens */
+  .dash-content {
+    padding: 20px 16px !important;
+  }
+
+  /* Top bar: stack vertically on mobile */
+  .dash-topbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    margin-bottom: 20px !important;
+  }
+
+  /* Actions row: full width, stretch button */
+  .dash-topbar-actions {
+    width: 100% !important;
+    flex-shrink: unset !important;
+  }
+
+  /* Hide both top-bar action buttons on mobile (Start Interview card already handles this) */
+  .dash-topbar-actions {
+    display: none !important;
+  }
+
+  /* Stat grid: 2 cols on mobile */
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Company grid: 2 col on mobile */
+  .company-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Interview page sidebar: hide on mobile */
+  .interview-sidebar {
+    display: none !important;
+  }
+
+  /* Chat area: full width on mobile */
+  .chat-input-hint {
+    display: none !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .company-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .stat-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

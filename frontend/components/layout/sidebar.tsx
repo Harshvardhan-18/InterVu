@@ -21,7 +21,7 @@ const NAV_ITEMS = [
   { href: "/dashboard",       label: "Settings",         icon: Settings,    disabled: true },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const user = auth.load();
   const userName = user?.name;
   const pathname = usePathname();
@@ -42,8 +42,8 @@ export default function Sidebar() {
         overflowY: "auto",
       }}
     >
-      {/* Logo */}
-      <div style={{ padding: "24px 20px 20px", borderBottom: "1px solid var(--border-subtle)" }}>
+      {/* Logo + mobile close */}
+      <div style={{ padding: "24px 20px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "10px" }}>
           <div
             style={{
@@ -73,6 +73,22 @@ export default function Sidebar() {
             InterVu
           </span>
         </Link>
+        {/* Close button — mobile only */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="sidebar-close-btn"
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: "var(--text-muted)", padding: "4px", borderRadius: "6px",
+              display: "none", alignItems: "center",
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Nav */}
