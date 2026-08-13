@@ -50,20 +50,20 @@ export default function Sidebar() {
               width: "32px",
               height: "32px",
               borderRadius: "10px",
-              background: "linear-gradient(135deg, #7C3AED, #6366F1)",
+              background: "linear-gradient(135deg, #4d8fa2, #68a9ba)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 0 20px rgba(124,58,237,0.4)",
+              boxShadow: "0 0 20px rgba(104,169,186,0.35)",
             }}
           >
-            <Zap size={16} color="white" fill="white" />
+            <Zap size={16} color="#061014" fill="#061014" />
           </div>
           <span
             style={{
               fontSize: "17px",
               fontWeight: 700,
-              background: "linear-gradient(135deg, #A78BFA, #818CF8)",
+              background: "linear-gradient(135deg, #e8fbff, #68a9ba)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
@@ -102,15 +102,15 @@ export default function Sidebar() {
                 fontSize: "13.5px",
                 fontWeight: isActive ? 600 : 450,
                 color: isActive ? "var(--text-primary)" : item.disabled ? "var(--text-muted)" : "var(--text-secondary)",
-                background: isActive ? "rgba(139,92,246,0.12)" : "transparent",
-                border: isActive ? "1px solid rgba(139,92,246,0.2)" : "1px solid transparent",
+                background: isActive ? "rgba(104,169,186,0.10)" : "transparent",
+                border: isActive ? "1px solid rgba(104,169,186,0.18)" : "1px solid transparent",
                 transition: "all 0.15s ease",
                 cursor: item.disabled ? "not-allowed" : "pointer",
                 opacity: item.disabled ? 0.45 : 1,
               }}
               onMouseEnter={(e) => {
                 if (!isActive && !item.disabled) {
-                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+                  (e.currentTarget as HTMLElement).style.background = "rgba(104,169,186,0.06)";
                   (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
                 }
               }}
@@ -123,16 +123,16 @@ export default function Sidebar() {
             >
               <Icon
                 size={16}
-                color={isActive ? "#A78BFA" : "currentColor"}
+                color={isActive ? "#68a9ba" : "currentColor"}
                 style={{ flexShrink: 0 }}
               />
               <span style={{ flex: 1 }}>{item.label}</span>
               {item.disabled && (
-                <span style={{ fontSize: "9px", background: "rgba(255,255,255,0.06)", color: "var(--text-muted)", padding: "2px 6px", borderRadius: "4px", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                <span style={{ fontSize: "9px", background: "rgba(104,169,186,0.08)", color: "var(--text-muted)", padding: "2px 6px", borderRadius: "4px", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" }}>
                   Soon
                 </span>
               )}
-              {isActive && <ChevronRight size={12} color="#A78BFA" />}
+              {isActive && <ChevronRight size={12} color="#68a9ba" />}
             </Link>
           );
         })}
@@ -151,13 +151,13 @@ export default function Sidebar() {
               width: "30px",
               height: "30px",
               borderRadius: "50%",
-              background: "linear-gradient(135deg, #7C3AED, #6366F1)",
+              background: "linear-gradient(135deg, #4d8fa2, #68a9ba)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: "12px",
               fontWeight: 700,
-              color: "white",
+              color: "#061014",
               flexShrink: 0,
             }}
           >

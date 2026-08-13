@@ -47,7 +47,7 @@ export default function InterviewCard({
   skills = [],
   onClick,
 }: InterviewCardProps) {
-  const accentColor = COMPANY_COLORS[company] ?? "#8B5CF6";
+  const accentColor = COMPANY_COLORS[company] ?? "#68a9ba";
   const initials = COMPANY_INITIALS[company] ?? company.slice(0, 2).toUpperCase();
 
   const scoreColor =
@@ -56,7 +56,7 @@ export default function InterviewCard({
   const statusConfig = {
     completed:    { label: "Completed",   bg: "rgba(34,197,94,0.12)",  border: "rgba(34,197,94,0.25)",  color: "#22C55E" },
     in_progress:{ label: "In Progress", bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.25)", color: "#F59E0B" },
-    scheduled:    { label: "Scheduled",   bg: "rgba(99,102,241,0.12)", border: "rgba(99,102,241,0.25)", color: "#6366F1" },
+    scheduled:    { label: "Scheduled",   bg: "rgba(104,169,186,0.12)", border: "rgba(104,169,186,0.25)", color: "#68a9ba" },
   }[status];
 
   const formattedDate = new Date(date).toLocaleDateString("en-US", {
@@ -206,3 +206,4 @@ export default function InterviewCard({
     </div>
   );
 }
+

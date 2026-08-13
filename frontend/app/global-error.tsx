@@ -44,9 +44,9 @@ export default function GlobalError({
             style={{
               padding: "10px 22px",
               borderRadius: "10px",
-              background: "#7C3AED",
+              background: "#4d8fa2",
               border: "none",
-              color: "white",
+              color: "#061014",
               fontSize: "14px",
               fontWeight: 600,
               cursor: "pointer",
@@ -77,3 +77,4 @@ export default function GlobalError({
     </html>
   );
 }
+

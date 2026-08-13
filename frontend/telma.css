@@ -1,0 +1,79 @@
+/**
+ * @license
+ *
+ * Font Family: Telma
+ * Designed by: Jitka Janečková
+ * URL: https://www.fontshare.com/fonts/telma
+ * © 2026 Indian Type Foundry
+ *
+ * Telma Light
+ * Telma Regular
+ * Telma Medium
+ * Telma Bold
+ * Telma Black
+ * Telma Variable (Variable font)
+ */
+
+@font-face {
+  font-family: 'Telma';
+  src: url('./fonts/telma/Telma-Light.woff2') format('woff2'),
+       url('./fonts/telma/Telma-Light.woff') format('woff'),
+       url('./fonts/telma/Telma-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Telma';
+  src: url('./fonts/telma/Telma-Regular.woff2') format('woff2'),
+       url('./fonts/telma/Telma-Regular.woff') format('woff'),
+       url('./fonts/telma/Telma-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Telma';
+  src: url('./fonts/telma/Telma-Medium.woff2') format('woff2'),
+       url('./fonts/telma/Telma-Medium.woff') format('woff'),
+       url('./fonts/telma/Telma-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Telma';
+  src: url('./fonts/telma/Telma-Bold.woff2') format('woff2'),
+       url('./fonts/telma/Telma-Bold.woff') format('woff'),
+       url('./fonts/telma/Telma-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Telma';
+  src: url('./fonts/telma/Telma-Black.woff2') format('woff2'),
+       url('./fonts/telma/Telma-Black.woff') format('woff'),
+       url('./fonts/telma/Telma-Black.ttf') format('truetype');
+  font-weight: 900;
+  font-display: swap;
+  font-style: normal;
+}
+
+/**
+ * Variable font — supports font-weight 300–900
+ * Usage: font-variation-settings: 'wght' 700;
+ */
+@font-face {
+  font-family: 'Telma';
+  src: url('./fonts/telma/Telma-Variable.woff2') format('woff2'),
+       url('./fonts/telma/Telma-Variable.woff') format('woff'),
+       url('./fonts/telma/Telma-Variable.ttf') format('truetype');
+  font-weight: 300 900;
+  font-display: swap;
+  font-style: normal;
+}

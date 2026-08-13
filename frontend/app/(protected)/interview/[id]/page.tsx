@@ -134,10 +134,10 @@ export default function InterviewPage() {
         padding: "20px 16px", gap: "24px",
       }}>
         <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "8px" }}>
-          <div style={{ width: "28px", height: "28px", borderRadius: "8px", background: "linear-gradient(135deg,#7C3AED,#6366F1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: "28px", height: "28px", borderRadius: "8px", background: "linear-gradient(135deg,#4d8fa2,#68a9ba)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Zap size={13} color="white" fill="white" />
           </div>
-          <span style={{ fontSize: "15px", fontWeight: 700, background: "linear-gradient(135deg,#A78BFA,#818CF8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+          <span style={{ fontSize: "15px", fontWeight: 700, background: "linear-gradient(135deg,#9dc4ce,#7ec8d8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
             InterVu
           </span>
         </Link>
@@ -189,10 +189,10 @@ export default function InterviewPage() {
               {msg.role === "interviewer" ? (
                 <div style={{ maxWidth: "680px", width: "100%" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                    <div style={{ width: "26px", height: "26px", borderRadius: "8px", background: "linear-gradient(135deg,#7C3AED,#6366F1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: "26px", height: "26px", borderRadius: "8px", background: "linear-gradient(135deg,#4d8fa2,#68a9ba)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Zap size={12} color="white" fill="white" />
                     </div>
-                    <span style={{ fontSize: "12px", fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: "0.07em" }}>AI Interviewer</span>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "#9dc4ce", textTransform: "uppercase", letterSpacing: "0.07em" }}>AI Interviewer</span>
                   </div>
                   <div style={{
                     padding: "18px 22px", borderRadius: "4px 18px 18px 18px",
@@ -207,8 +207,8 @@ export default function InterviewPage() {
                 <div style={{ maxWidth: "580px" }}>
                   <div style={{
                     padding: "16px 20px", borderRadius: "18px 4px 18px 18px",
-                    background: "linear-gradient(135deg, rgba(124,58,237,0.25), rgba(99,102,241,0.2))",
-                    border: "1px solid rgba(139,92,246,0.3)",
+                    background: "linear-gradient(135deg, rgba(104,169,186,0.25), rgba(104,169,186,0.2))",
+                    border: "1px solid rgba(104,169,186,0.3)",
                     fontSize: "14px", color: "var(--text-primary)", lineHeight: 1.7,
                   }}>
                     {msg.content}
@@ -275,7 +275,7 @@ export default function InterviewPage() {
 
           {submitting && (
             <div style={{ display: "flex", alignItems: "center", gap: "8px", animation: "fadeIn 0.2s ease" }}>
-              <div style={{ width: "26px", height: "26px", borderRadius: "8px", background: "linear-gradient(135deg,#7C3AED,#6366F1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ width: "26px", height: "26px", borderRadius: "8px", background: "linear-gradient(135deg,#4d8fa2,#68a9ba)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Zap size={12} color="white" fill="white" />
               </div>
               <div style={{ padding: "14px 18px", borderRadius: "4px 18px 18px 18px", background: "var(--surface-1)", border: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -304,10 +304,10 @@ export default function InterviewPage() {
               onClick={() => router.push(`/report/${interviewId}`)}
               style={{
                 width: "100%", padding: "15px", borderRadius: "12px",
-                background: "linear-gradient(135deg,#7C3AED,#6366F1)",
+                background: "linear-gradient(135deg,#4d8fa2,#68a9ba)",
                 border: "none", color: "white", fontSize: "15px", fontWeight: 700,
                 cursor: "pointer", fontFamily: "inherit",
-                boxShadow: "0 8px 24px rgba(124,58,237,0.4)",
+                boxShadow: "0 8px 24px rgba(104,169,186,0.4)",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
               }}
             >
@@ -341,11 +341,11 @@ export default function InterviewPage() {
                   disabled={!answer.trim() || submitting}
                   style={{
                     width: "36px", height: "36px", borderRadius: "10px",
-                    background: answer.trim() && !submitting ? "linear-gradient(135deg,#7C3AED,#6366F1)" : "var(--surface-2)",
+                    background: answer.trim() && !submitting ? "linear-gradient(135deg,#4d8fa2,#68a9ba)" : "var(--surface-2)",
                     border: "none", display: "flex", alignItems: "center", justifyContent: "center",
                     cursor: answer.trim() && !submitting ? "pointer" : "not-allowed",
                     transition: "all 0.2s ease",
-                    boxShadow: answer.trim() && !submitting ? "0 4px 12px rgba(124,58,237,0.4)" : "none",
+                    boxShadow: answer.trim() && !submitting ? "0 4px 12px rgba(104,169,186,0.4)" : "none",
                   }}
                 >
                   <Send size={15} color={answer.trim() && !submitting ? "white" : "var(--text-muted)"} />

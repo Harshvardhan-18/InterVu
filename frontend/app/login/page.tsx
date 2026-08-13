@@ -40,10 +40,10 @@ export default function LoginPage() {
       }}>
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "32px" }}>
-          <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "linear-gradient(135deg,#7C3AED,#6366F1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Zap size={16} color="white" fill="white" />
+          <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "linear-gradient(135deg,#4d8fa2,#68a9ba)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Zap size={16} color="#061014" fill="#061014" />
           </div>
-          <span style={{ fontSize: "18px", fontWeight: 700, background: "linear-gradient(135deg,#A78BFA,#818CF8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+          <span style={{ fontSize: "18px", fontWeight: 700, background: "linear-gradient(135deg,#e8fbff,#68a9ba)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
             InterVu
           </span>
         </div>
@@ -70,7 +70,7 @@ export default function LoginPage() {
                 borderRadius: "10px", fontSize: "14px", color: "var(--text-primary)",
                 outline: "none", fontFamily: "inherit",
               }}
-              onFocus={e => { e.currentTarget.style.borderColor = "#7C3AED"; }}
+              onFocus={e => { e.currentTarget.style.borderColor = "#68a9ba"; }}
               onBlur={e => { e.currentTarget.style.borderColor = "var(--border-subtle)"; }}
             />
           </div>
@@ -91,7 +91,7 @@ export default function LoginPage() {
                 borderRadius: "10px", fontSize: "14px", color: "var(--text-primary)",
                 outline: "none", fontFamily: "inherit",
               }}
-              onFocus={e => { e.currentTarget.style.borderColor = "#7C3AED"; }}
+              onFocus={e => { e.currentTarget.style.borderColor = "#68a9ba"; }}
               onBlur={e => { e.currentTarget.style.borderColor = "var(--border-subtle)"; }}
             />
           </div>
@@ -105,11 +105,11 @@ export default function LoginPage() {
             disabled={!name.trim() || !email.trim() || loading}
             style={{
               width: "100%", padding: "13px", borderRadius: "10px",
-              background: name && email ? "linear-gradient(135deg,#7C3AED,#6366F1)" : "var(--surface-2)",
-              border: "none", color: name && email ? "white" : "var(--text-muted)",
+              background: name && email ? "linear-gradient(135deg,#4d8fa2,#68a9ba)" : "var(--surface-2)",
+              border: "none", color: name && email ? "#061014" : "var(--text-muted)",
               fontSize: "14px", fontWeight: 700, cursor: name && email ? "pointer" : "not-allowed",
               fontFamily: "inherit", transition: "all 0.2s ease",
-              boxShadow: name && email ? "0 4px 16px rgba(124,58,237,0.35)" : "none",
+              boxShadow: name && email ? "0 4px 16px rgba(104,169,186,0.30)" : "none",
             }}
           >
             {loading ? "Signing in…" : "Get Started"}

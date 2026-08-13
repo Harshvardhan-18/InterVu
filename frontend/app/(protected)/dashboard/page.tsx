@@ -152,11 +152,11 @@ export default function DashboardPage() {
                 borderRadius: "10px",
                 fontSize: "13px",
                 fontWeight: 600,
-                background: "linear-gradient(135deg, #7C3AED, #6366F1)",
+                background: "linear-gradient(135deg, #4d8fa2, #68a9ba)",
                 border: "none",
-                color: "white",
+                color: "#061014",
                 cursor: "pointer",
-                boxShadow: "0 4px 16px rgba(124,58,237,0.35)",
+                boxShadow: "0 4px 16px rgba(104,169,186,0.35)",
                 transition: "all 0.2s ease",
                 fontFamily: "inherit",
               }}
@@ -164,13 +164,13 @@ export default function DashboardPage() {
                 (e.currentTarget as HTMLElement).style.transform =
                   "translateY(-1px)";
                 (e.currentTarget as HTMLElement).style.boxShadow =
-                  "0 8px 24px rgba(124,58,237,0.5)";
+                  "0 8px 24px rgba(104,169,186,0.5)";
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLElement).style.transform =
                   "translateY(0)";
                 (e.currentTarget as HTMLElement).style.boxShadow =
-                  "0 4px 16px rgba(124,58,237,0.35)";
+                  "0 4px 16px rgba(104,169,186,0.35)";
               }}
             >
               <Plus size={15} /> New Interview
@@ -184,8 +184,8 @@ export default function DashboardPage() {
             borderRadius: "20px",
             padding: "28px 32px",
             background:
-              "linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(99,102,241,0.1) 50%, rgba(9,9,11,0) 100%)",
-            border: "1px solid rgba(139,92,246,0.2)",
+              "linear-gradient(135deg, rgba(104,169,186,0.15) 0%, rgba(104,169,186,0.1) 50%, rgba(9,9,11,0) 100%)",
+            border: "1px solid rgba(104,169,186,0.2)",
             marginBottom: "24px",
             position: "relative",
             overflow: "hidden",
@@ -199,7 +199,7 @@ export default function DashboardPage() {
               width: "200px",
               height: "200px",
               background:
-                "radial-gradient(ellipse, rgba(124,58,237,0.2) 0%, transparent 70%)",
+                "radial-gradient(ellipse, rgba(104,169,186,0.2) 0%, transparent 70%)",
               borderRadius: "50%",
               pointerEvents: "none",
             }}
@@ -217,11 +217,11 @@ export default function DashboardPage() {
                 width: "40px",
                 height: "40px",
                 borderRadius: "12px",
-                background: "linear-gradient(135deg, #7C3AED, #6366F1)",
+                background: "linear-gradient(135deg, #4d8fa2, #68a9ba)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 4px 16px rgba(124,58,237,0.4)",
+                boxShadow: "0 4px 16px rgba(104,169,186,0.4)",
               }}
             >
               <Zap size={18} color="white" fill="white" />
@@ -284,7 +284,7 @@ export default function DashboardPage() {
               label="Total Interviews"
               value={interviews.length}
               icon={Mic2}
-              iconColor="#8B5CF6"
+              iconColor="#68a9ba"
               trend="up"
               trendLabel="+2 this week"
             />
@@ -293,7 +293,7 @@ export default function DashboardPage() {
               label="Average Score"
               value={`${avgScore}/100`}
               icon={BarChart3}
-              iconColor="#6366F1"
+              iconColor="#68a9ba"
               trend="up"
               trendLabel="+4 pts"
             />
@@ -400,3 +400,4 @@ export default function DashboardPage() {
     </AppShell>
   );
 }
+

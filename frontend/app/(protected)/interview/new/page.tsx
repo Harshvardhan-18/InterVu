@@ -131,11 +131,11 @@ export default function NewInterviewPage() {
                 <div style={{
                   width: "28px", height: "28px", borderRadius: "50%", fontSize: "11px", fontWeight: 700,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  background: step > s.n ? "linear-gradient(135deg,#22C55E,#16A34A)" : step === s.n ? "linear-gradient(135deg,#7C3AED,#6366F1)" : "var(--surface-2)",
+                  background: step > s.n ? "linear-gradient(135deg,#22C55E,#16A34A)" : step === s.n ? "linear-gradient(135deg,#4d8fa2,#68a9ba)" : "var(--surface-2)",
                   border: `1px solid ${step > s.n ? "transparent" : step === s.n ? "transparent" : "var(--border-subtle)"}`,
                   color: step >= s.n ? "white" : "var(--text-muted)",
                   transition: "all 0.3s ease",
-                  boxShadow: step === s.n ? "0 0 0 4px rgba(124,58,237,0.2)" : "none",
+                  boxShadow: step === s.n ? "0 0 0 4px rgba(104,169,186,0.2)" : "none",
                 }}>
                   {step > s.n ? <CheckCircle2 size={13} /> : s.n}
                 </div>
@@ -172,7 +172,7 @@ export default function NewInterviewPage() {
                     outline: "none", fontFamily: "inherit", boxSizing: "border-box",
                     transition: "border-color 0.2s ease",
                   }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "#7C3AED"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(124,58,237,0.1)"; }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = "#4d8fa2"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(104,169,186,0.1)"; }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border-subtle)"; e.currentTarget.style.boxShadow = "none"; }}
                 />
               </div>
@@ -189,10 +189,10 @@ export default function NewInterviewPage() {
                     style={{
                       display: "flex", alignItems: "center", gap: "12px",
                       padding: "14px 16px", borderRadius: "12px", cursor: "pointer",
-                      background: selected ? "rgba(124,58,237,0.12)" : "var(--surface-1)",
-                      border: `1px solid ${selected ? "rgba(124,58,237,0.4)" : "var(--border-subtle)"}`,
+                      background: selected ? "rgba(104,169,186,0.12)" : "var(--surface-1)",
+                      border: `1px solid ${selected ? "rgba(104,169,186,0.4)" : "var(--border-subtle)"}`,
                       transition: "all 0.2s ease", fontFamily: "inherit",
-                      boxShadow: selected ? "0 0 0 3px rgba(124,58,237,0.1)" : "none",
+                      boxShadow: selected ? "0 0 0 3px rgba(104,169,186,0.1)" : "none",
                     }}
                     onMouseEnter={(e) => { if (!selected) { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)"; (e.currentTarget as HTMLElement).style.background = "var(--surface-2)"; } }}
                     onMouseLeave={(e) => { if (!selected) { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-subtle)"; (e.currentTarget as HTMLElement).style.background = "var(--surface-1)"; } }}
@@ -203,7 +203,7 @@ export default function NewInterviewPage() {
                     <span style={{ fontSize: "13.5px", fontWeight: selected ? 600 : 500, color: selected ? "var(--text-primary)" : "var(--text-secondary)" }}>
                       {c.name}
                     </span>
-                    {selected && <CheckCircle2 size={15} color="#8B5CF6" style={{ marginLeft: "auto" }} />}
+                    {selected && <CheckCircle2 size={15} color="#68a9ba" style={{ marginLeft: "auto" }} />}
                   </button>
                 );
               })}
@@ -215,14 +215,14 @@ export default function NewInterviewPage() {
                 onClick={() => setCompany(companyQuery)}
                 style={{
                   width: "100%", padding: "12px", borderRadius: "12px",
-                  background: company === companyQuery ? "rgba(124,58,237,0.12)" : "var(--surface-1)",
-                  border: `1px solid ${company === companyQuery ? "rgba(124,58,237,0.4)" : "var(--border-subtle)"}`,
+                  background: company === companyQuery ? "rgba(104,169,186,0.12)" : "var(--surface-1)",
+                  border: `1px solid ${company === companyQuery ? "rgba(104,169,186,0.4)" : "var(--border-subtle)"}`,
                   color: "var(--text-secondary)", fontSize: "13px", cursor: "pointer",
                   fontFamily: "inherit", display: "flex", alignItems: "center", gap: "8px",
                   marginBottom: "16px",
                 }}
               >
-                <Plus size={14} color="#8B5CF6" /> Use &quot;{companyQuery}&quot;
+                <Plus size={14} color="#68a9ba" /> Use &quot;{companyQuery}&quot;
               </button>
             )}
           </div>
@@ -248,7 +248,7 @@ export default function NewInterviewPage() {
                 outline: "none", fontFamily: "inherit", boxSizing: "border-box",
                 marginBottom: "20px",
               }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = "#7C3AED"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(124,58,237,0.1)"; }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = "#4d8fa2"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(104,169,186,0.1)"; }}
               onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border-subtle)"; e.currentTarget.style.boxShadow = "none"; }}
               onKeyDown={(e) => { if (e.key === "Enter" && role.trim()) setStep(3); }}
             />
@@ -263,9 +263,9 @@ export default function NewInterviewPage() {
                   onClick={() => setRole(r)}
                   style={{
                     padding: "7px 13px", borderRadius: "8px", fontSize: "12.5px",
-                    background: role === r ? "rgba(124,58,237,0.12)" : "var(--surface-1)",
-                    border: `1px solid ${role === r ? "rgba(124,58,237,0.35)" : "var(--border-subtle)"}`,
-                    color: role === r ? "#A78BFA" : "var(--text-muted)",
+                    background: role === r ? "rgba(104,169,186,0.12)" : "var(--surface-1)",
+                    border: `1px solid ${role === r ? "rgba(104,169,186,0.35)" : "var(--border-subtle)"}`,
+                    color: role === r ? "#9dc4ce" : "var(--text-muted)",
                     cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s ease",
                   }}
                 >
@@ -341,14 +341,14 @@ export default function NewInterviewPage() {
                   onClick={handleStart}
                   style={{
                     width: "100%", padding: "16px", borderRadius: "14px",
-                    background: "linear-gradient(135deg, #7C3AED, #6366F1)",
-                    border: "none", color: "white", fontSize: "15px", fontWeight: 700,
+                    background: "linear-gradient(135deg, #4d8fa2, #68a9ba)",
+                    border: "none", color: "#061014", fontSize: "15px", fontWeight: 700,
                     cursor: "pointer", fontFamily: "inherit",
-                    boxShadow: "0 8px 32px rgba(124,58,237,0.4)",
+                    boxShadow: "0 8px 32px rgba(104,169,186,0.4)",
                     transition: "all 0.25s ease", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
                   }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 16px 48px rgba(124,58,237,0.55)"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 32px rgba(124,58,237,0.4)"; }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 16px 48px rgba(104,169,186,0.55)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 32px rgba(104,169,186,0.4)"; }}
                 >
                   Generate Personalised Interview <ArrowRight size={16} />
                 </button>
@@ -357,7 +357,7 @@ export default function NewInterviewPage() {
               /* Pipeline loader */
               <div style={{ background: "var(--surface-1)", border: "1px solid var(--border-subtle)", borderRadius: "20px", padding: "32px" }}>
                 <div style={{ textAlign: "center", marginBottom: "32px" }}>
-                  <div style={{ width: "56px", height: "56px", borderRadius: "16px", background: "linear-gradient(135deg,#7C3AED,#6366F1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", boxShadow: "0 8px 24px rgba(124,58,237,0.4)" }}>
+                  <div style={{ width: "56px", height: "56px", borderRadius: "16px", background: "linear-gradient(135deg,#4d8fa2,#68a9ba)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", boxShadow: "0 8px 24px rgba(104,169,186,0.4)" }}>
                     <Loader2 size={24} color="white" style={{ animation: "spin-slow 1s linear infinite" }} />
                   </div>
                   <h3 style={{ fontSize: "17px", fontWeight: 700, color: "var(--text-primary)", marginBottom: "6px" }}>Building your interview…</h3>
@@ -373,17 +373,17 @@ export default function NewInterviewPage() {
                         <div style={{
                           width: "36px", height: "36px", borderRadius: "10px", flexShrink: 0,
                           display: "flex", alignItems: "center", justifyContent: "center",
-                          background: isDone ? "rgba(34,197,94,0.12)" : isActive ? "rgba(124,58,237,0.15)" : "var(--surface-2)",
-                          border: `1px solid ${isDone ? "rgba(34,197,94,0.25)" : isActive ? "rgba(124,58,237,0.3)" : "var(--border-subtle)"}`,
+                          background: isDone ? "rgba(34,197,94,0.12)" : isActive ? "rgba(104,169,186,0.15)" : "var(--surface-2)",
+                          border: `1px solid ${isDone ? "rgba(34,197,94,0.25)" : isActive ? "rgba(104,169,186,0.3)" : "var(--border-subtle)"}`,
                           transition: "all 0.3s ease",
                         }}>
-                          {isDone ? <CheckCircle2 size={16} color="#22C55E" /> : isActive ? <Loader2 size={16} color="#8B5CF6" style={{ animation: "spin-slow 1s linear infinite" }} /> : <Icon size={16} color="var(--text-muted)" />}
+                          {isDone ? <CheckCircle2 size={16} color="#22C55E" /> : isActive ? <Loader2 size={16} color="#68a9ba" style={{ animation: "spin-slow 1s linear infinite" }} /> : <Icon size={16} color="var(--text-muted)" />}
                         </div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: "13.5px", fontWeight: 600, color: isDone ? "#22C55E" : isActive ? "var(--text-primary)" : "var(--text-muted)", transition: "color 0.3s ease" }}>
                             {label}
                           </div>
-                          {isActive && <div style={{ fontSize: "11px", color: "#8B5CF6", marginTop: "2px" }}>In progress…</div>}
+                          {isActive && <div style={{ fontSize: "11px", color: "#68a9ba", marginTop: "2px" }}>In progress…</div>}
                           {isDone && <div style={{ fontSize: "11px", color: "#22C55E", marginTop: "2px" }}>Complete</div>}
                         </div>
                       </div>
@@ -403,16 +403,16 @@ export default function NewInterviewPage() {
               disabled={!canProceed}
               style={{
                 width: "100%", padding: "14px", borderRadius: "12px",
-                background: canProceed ? "linear-gradient(135deg, #7C3AED, #6366F1)" : "var(--surface-2)",
+                background: canProceed ? "linear-gradient(135deg, #4d8fa2, #68a9ba)" : "var(--surface-2)",
                 border: canProceed ? "none" : "1px solid var(--border-subtle)",
                 color: canProceed ? "white" : "var(--text-muted)",
                 fontSize: "14px", fontWeight: 600, cursor: canProceed ? "pointer" : "not-allowed",
                 fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                boxShadow: canProceed ? "0 6px 20px rgba(124,58,237,0.35)" : "none",
+                boxShadow: canProceed ? "0 6px 20px rgba(104,169,186,0.35)" : "none",
                 transition: "all 0.2s ease",
               }}
-              onMouseEnter={(e) => { if (canProceed) { (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 12px 32px rgba(124,58,237,0.5)"; } }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = canProceed ? "0 6px 20px rgba(124,58,237,0.35)" : "none"; }}
+              onMouseEnter={(e) => { if (canProceed) { (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 12px 32px rgba(104,169,186,0.5)"; } }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = canProceed ? "0 6px 20px rgba(104,169,186,0.35)" : "none"; }}
             >
               Continue <ChevronRight size={16} />
             </button>
@@ -431,3 +431,4 @@ function Plus({ size, color }: { size: number; color: string }) {
     </svg>
   );
 }
+

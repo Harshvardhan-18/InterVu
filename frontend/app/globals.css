@@ -1,65 +1,73 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import '../telma.css';
 
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
 
-/* ─── Color Tokens ─────────────────────────────────────────────────── */
+/* ─── Color Tokens — Porcelain Fold Palette ─────────────────────────── */
+/*
+  Source colors from the background:
+    deep:   #061014  (very dark teal-black)
+    mid:    #68a9ba  (steel blue)
+    light:  #e8fbff  (light cyan-white)
+*/
 :root {
-  /* Backgrounds */
-  --bg-base:       #09090B;
-  --bg-subtle:     #0F0F13;
-  --bg-card:       #121217;
+  /* Backgrounds — deep teal-black family */
+  --bg-base:       #070d10;
+  --bg-subtle:     #0b1318;
+  --bg-card:       #0e181e;
 
-  /* Surfaces */
-  --surface-1:     #18181B;
-  --surface-2:     #1F1F23;
-  --surface-3:     #25252B;
+  /* Surfaces — stepped dark slate */
+  --surface-1:     #111d24;
+  --surface-2:     #172530;
+  --surface-3:     #1e303d;
 
-  /* Borders */
-  --border-subtle: rgba(255,255,255,0.06);
-  --border-default:rgba(255,255,255,0.10);
-  --border-strong: rgba(255,255,255,0.18);
+  /* Borders — steel blue tints */
+  --border-subtle: rgba(104,169,186,0.08);
+  --border-default:rgba(104,169,186,0.14);
+  --border-strong: rgba(104,169,186,0.26);
 
-  /* Accent */
-  --accent:        #8B5CF6;
-  --accent-dim:    #7C3AED;
-  --accent-muted:  rgba(139,92,246,0.15);
-  --accent-glow:   rgba(139,92,246,0.25);
-  --indigo:        #6366F1;
+  /* Accent — steel blue */
+  --accent:        #68a9ba;
+  --accent-dim:    #4d8fa2;
+  --accent-muted:  rgba(104,169,186,0.12);
+  --accent-glow:   rgba(104,169,186,0.22);
+  --indigo:        #7ec8d8;
 
-  /* Text */
-  --text-primary:  #FAFAFA;
-  --text-secondary:#A1A1AA;
-  --text-muted:    #71717A;
+  /* Text — cyan-white family */
+  --text-primary:  #e8fbff;
+  --text-secondary:#9dc4ce;
+  --text-muted:    #5a8898;
 
   /* Status */
-  --success:       #22C55E;
-  --warning:       #F59E0B;
-  --danger:        #EF4444;
+  --success:       #34d399;
+  --warning:       #fbbf24;
+  --danger:        #f87171;
 
   /* Tailwind compat shims */
-  --background:    224 15% 4%;
-  --foreground:    0 0% 98%;
-  --card:          224 15% 7%;
-  --card-foreground:0 0% 98%;
-  --popover:       224 15% 7%;
-  --popover-foreground:0 0% 98%;
-  --primary:       263 70% 60%;
-  --primary-foreground:0 0% 100%;
-  --secondary:     224 15% 12%;
-  --secondary-foreground:0 0% 80%;
-  --muted:         224 15% 11%;
-  --muted-foreground:215 10% 50%;
-  --accent-tw:     224 15% 14%;
-  --accent-foreground:0 0% 90%;
+  --background:    200 38% 5%;
+  --foreground:    196 100% 96%;
+  --card:          200 38% 8%;
+  --card-foreground:196 100% 96%;
+  --popover:       200 38% 8%;
+  --popover-foreground:196 100% 96%;
+  --primary:       195 28% 57%;
+  --primary-foreground:200 38% 5%;
+  --secondary:     200 38% 12%;
+  --secondary-foreground:196 50% 80%;
+  --muted:         200 38% 11%;
+  --muted-foreground:200 25% 45%;
+  --accent-tw:     200 38% 15%;
+  --accent-foreground:196 80% 90%;
   --destructive:   0 72% 51%;
   --destructive-foreground:0 0% 100%;
-  --border:        224 15% 11%;
-  --input:         224 15% 11%;
-  --ring:          263 70% 60%;
+  --border:        200 38% 13%;
+  --input:         200 38% 13%;
+  --ring:          195 28% 57%;
   --radius:        0.75rem;
   --font-inter:    'Inter', sans-serif;
+  --font-telma:    'Telma', serif;
 }
 
 /* ─── Reset ────────────────────────────────────────────────────────── */
@@ -96,8 +104,8 @@ body {
 
 /* ─── Selection ─────────────────────────────────────────────────────── */
 ::selection {
-  background: rgba(139,92,246,0.35);
-  color: #fff;
+  background: rgba(104,169,186,0.30);
+  color: #e8fbff;
 }
 
 /* ─── Focus ring ─────────────────────────────────────────────────────── */
@@ -111,14 +119,14 @@ body {
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #A78BFA, #818CF8);
+  background: linear-gradient(135deg, #e8fbff, #68a9ba);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .gradient-text-cool {
-  background: linear-gradient(135deg, #8B5CF6, #22D3EE);
+  background: linear-gradient(135deg, #a8dce8, #68a9ba);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -126,29 +134,33 @@ body {
 
 /* Glass surfaces */
 .glass {
-  background: rgba(255,255,255,0.03);
+  background: rgba(104,169,186,0.04);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-subtle);
 }
 
 .glass-md {
-  background: rgba(255,255,255,0.05);
+  background: rgba(104,169,186,0.07);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border-default);
 }
 
 /* Glow effects */
-.glow-violet {
-  box-shadow: 0 0 32px rgba(139,92,246,0.18),
-              0 0 0 1px rgba(139,92,246,0.1);
+.glow-accent {
+  box-shadow: 0 0 32px rgba(104,169,186,0.15),
+              0 0 0 1px rgba(104,169,186,0.08);
 }
 
-.glow-violet-lg {
-  box-shadow: 0 0 60px rgba(139,92,246,0.25),
-              0 8px 32px rgba(0,0,0,0.4);
+.glow-accent-lg {
+  box-shadow: 0 0 60px rgba(104,169,186,0.22),
+              0 8px 32px rgba(0,0,0,0.5);
 }
+
+/* Keep legacy violet names pointing to new accent so nothing breaks */
+.glow-violet    { box-shadow: 0 0 32px rgba(104,169,186,0.15), 0 0 0 1px rgba(104,169,186,0.08); }
+.glow-violet-lg { box-shadow: 0 0 60px rgba(104,169,186,0.22), 0 8px 32px rgba(0,0,0,0.5); }
 
 /* Surface cards */
 .surface {
@@ -164,7 +176,7 @@ body {
 .surface-hover:hover {
   background: var(--surface-2);
   border-color: var(--border-default);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
   transform: translateY(-1px);
 }
 
@@ -196,9 +208,9 @@ body {
 }
 
 @keyframes pulse-ring {
-  0%   { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(139,92,246,0.4); }
-  70%  { transform: scale(1);    box-shadow: 0 0 0 10px rgba(139,92,246,0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(139,92,246,0); }
+  0%   { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(104,169,186,0.4); }
+  70%  { transform: scale(1);    box-shadow: 0 0 0 10px rgba(104,169,186,0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(104,169,186,0); }
 }
 
 @keyframes spin-slow {
@@ -255,26 +267,26 @@ body {
 .typing-dot:nth-child(2) { animation-delay: 0.2s; }
 .typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
-/* Progress bar custom colors */
+/* Progress bar */
 [data-slot="progress-indicator"] {
-  background: linear-gradient(90deg, #7C3AED, #6366F1) !important;
+  background: linear-gradient(90deg, #4d8fa2, #68a9ba) !important;
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ─── Gradient backgrounds ───────────────────────────────────────────── */
 .hero-gradient {
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(139,92,246,0.18) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 30% at 80% 20%, rgba(99,102,241,0.1) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(104,169,186,0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 30% at 80% 20%, rgba(126,200,216,0.08) 0%, transparent 50%),
     var(--bg-base);
 }
 
 .accent-gradient {
-  background: linear-gradient(135deg, #7C3AED 0%, #6366F1 100%);
+  background: linear-gradient(135deg, #4d8fa2 0%, #68a9ba 100%);
 }
 
 .accent-gradient-animated {
-  background: linear-gradient(270deg, #8B5CF6, #6366F1, #7C3AED, #8B5CF6);
+  background: linear-gradient(270deg, #68a9ba, #4d8fa2, #7ec8d8, #68a9ba);
   background-size: 300% 300%;
   animation: gradient-shift 4s ease infinite;
 }

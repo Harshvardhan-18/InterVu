@@ -76,7 +76,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
           border: "1px solid var(--border-default)",
           borderRadius: "20px",
           overflow: "hidden",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.15)",
+          boxShadow: "0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(104,169,186,0.12)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -125,22 +125,21 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                     padding: "11px 12px",
                     borderRadius: "10px",
                     cursor: "pointer",
-                    background: isActive ? "rgba(139,92,246,0.12)" : "transparent",
-                    border: `1px solid ${isActive ? "rgba(139,92,246,0.2)" : "transparent"}`,
-                    transition: "all 0.1s ease",
+                    background: isActive ? "rgba(104,169,186,0.10)" : "transparent",
+                    border: `1px solid ${isActive ? "rgba(104,169,186,0.18)" : "transparent"}`,                    transition: "all 0.1s ease",
                   }}
                 >
                   <div style={{
                     width: "32px", height: "32px", borderRadius: "8px",
-                    background: isActive ? "rgba(139,92,246,0.2)" : "rgba(255,255,255,0.05)",
+                    background: isActive ? "rgba(104,169,186,0.16)" : "rgba(255,255,255,0.05)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
-                    <Icon size={15} color={isActive ? "#A78BFA" : "var(--text-muted)"} />
+                    <Icon size={15} color={isActive ? "#68a9ba" : "var(--text-muted)"} />
                   </div>
                   <span style={{ fontSize: "13.5px", color: isActive ? "var(--text-primary)" : "var(--text-secondary)", fontWeight: isActive ? 500 : 400 }}>
                     {cmd.label}
                   </span>
-                  {isActive && <ArrowRight size={13} color="#A78BFA" style={{ marginLeft: "auto" }} />}
+                  {isActive && <ArrowRight size={13} color="#68a9ba" style={{ marginLeft: "auto" }} />}
                 </div>
               );
             })

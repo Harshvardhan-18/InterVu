@@ -14,7 +14,7 @@ export default function StatCard({
   label,
   value,
   icon: Icon,
-  iconColor = "#8B5CF6",
+  iconColor = "#68a9ba",
   trend,
   trendLabel,
   id,
@@ -111,3 +111,4 @@ export default function StatCard({
     </div>
   );
 }
+

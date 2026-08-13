@@ -122,12 +122,12 @@ export default function ReportPage() {
         {/* ── Hero score card ── */}
         <div style={{
           borderRadius: "20px", padding: "36px",
-          background: "linear-gradient(135deg, rgba(124,58,237,0.12) 0%, rgba(99,102,241,0.08) 50%, rgba(9,9,11,0) 100%)",
-          border: "1px solid rgba(139,92,246,0.2)",
+          background: "linear-gradient(135deg, rgba(104,169,186,0.12) 0%, rgba(104,169,186,0.08) 50%, rgba(9,9,11,0) 100%)",
+          border: "1px solid rgba(104,169,186,0.2)",
           marginBottom: "24px", display: "flex", alignItems: "center", gap: "40px",
           position: "relative", overflow: "hidden",
         }}>
-          <div style={{ position: "absolute", top: "-60px", right: "-60px", width: "240px", height: "240px", background: "radial-gradient(ellipse, rgba(124,58,237,0.15) 0%, transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", top: "-60px", right: "-60px", width: "240px", height: "240px", background: "radial-gradient(ellipse, rgba(104,169,186,0.15) 0%, transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
 
           <ScoreRing score={report.overall_score} size={140} strokeWidth={10} />
 
@@ -158,7 +158,7 @@ export default function ReportPage() {
             borderRadius: "18px", padding: "24px", marginBottom: "20px",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
-            <BarChart3 size={16} color="#8B5CF6" />
+            <BarChart3 size={16} color="#68a9ba" />
             <h3 style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>Section Breakdown</h3>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -237,15 +237,15 @@ export default function ReportPage() {
             borderRadius: "18px", padding: "24px", marginBottom: "24px",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
-              <div style={{ width: "30px", height: "30px", borderRadius: "9px", background: "rgba(139,92,246,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <BookOpen size={15} color="#8B5CF6" />
+              <div style={{ width: "30px", height: "30px", borderRadius: "9px", background: "rgba(104,169,186,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <BookOpen size={15} color="#68a9ba" />
               </div>
               <h3 style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>Recommendations</h3>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {report.report.recommendations.map((rec, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "12px 14px", borderRadius: "10px", background: "var(--surface-2)" }}>
-                  <ChevronRight size={14} color="#8B5CF6" style={{ flexShrink: 0, marginTop: "2px" }} />
+                  <ChevronRight size={14} color="#68a9ba" style={{ flexShrink: 0, marginTop: "2px" }} />
                   <span style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5 }}>{rec}</span>
                 </div>
               ))}
@@ -260,15 +260,15 @@ export default function ReportPage() {
             onClick={() => router.push("/interview/new")}
             style={{
               flex: 1, padding: "14px", borderRadius: "12px",
-              background: "linear-gradient(135deg,#7C3AED,#6366F1)",
+              background: "linear-gradient(135deg,#4d8fa2,#68a9ba)",
               border: "none", color: "white", fontSize: "14px", fontWeight: 700,
               cursor: "pointer", fontFamily: "inherit",
-              boxShadow: "0 6px 20px rgba(124,58,237,0.4)",
+              boxShadow: "0 6px 20px rgba(104,169,186,0.4)",
               display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
               transition: "all 0.2s ease",
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 12px 32px rgba(124,58,237,0.55)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 6px 20px rgba(124,58,237,0.4)"; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 12px 32px rgba(104,169,186,0.55)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 6px 20px rgba(104,169,186,0.4)"; }}
           >
             Start New Interview <ArrowRight size={15} />
           </button>
