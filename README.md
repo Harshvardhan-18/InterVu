@@ -1,6 +1,6 @@
 # InterVu
 
-An AI-powered mock interview platform that researches real companies, generates adaptive interview questions grounded in actual interview experiences, and provides detailed performance feedback.
+An AI-powered mock interview platform that researches real companies, generates adaptive interview questions grounded in actual interview experiences, and provides detailed performance feedback — available on **web** and as a **native mobile app** (React Native / Expo), both backed by the same FastAPI + LangGraph engine.
 
 ## How It Works
 
@@ -13,11 +13,24 @@ An AI-powered mock interview platform that researches real companies, generates 
 ---
 <img width="6838" height="4304" alt="Untitled-2026-06-16-1614" src="https://github.com/user-attachments/assets/a11082f2-0db6-4d18-b936-51be2f68eba1" />
 
+# Clients
+
+InterVu ships two clients that hit the same backend API:
+
+| Client | Stack | Notes |
+|--------|-------|-------|
+| **Web** | Next.js 16, TypeScript, TailwindCSS | Browser session via `localStorage` |
+| **Mobile** | React Native (Expo SDK), Expo Router, TypeScript | Native session via `expo-secure-store`; ships as an Android APK via EAS Build |
+
+Both clients share the same design language, auth flow (email-based, no password), and the full interview → evaluation → report loop against the FastAPI backend.
+
+---
+
 # Project Structure
 
 ```text
 InterVu/
-├── frontend/                    # Next.js 16 + TypeScript + TailwindCSS
+├── frontend/                    # Next.js 16 + TypeScript + TailwindCSS (web client)
 │   └── app/
 │       ├── login/               # Auth page
 │       ├── (protected)/         # Auth-guarded pages
@@ -27,6 +40,25 @@ InterVu/
 │       │   │   └── [id]/        # Live interview session (chat UI)
 │       │   └── report/[id]/     # Post-interview feedback report
 │       └── layout.tsx
+├── mobile/                      # React Native (Expo) + TypeScript (mobile client)
+│   ├── app/                     # Expo Router file-based screens
+│   │   ├── _layout.tsx          # Root: fonts, auth guard, splash screen
+│   │   ├── (auth)/
+│   │   │   └── login.tsx        # Auth screen
+│   │   └── (tabs)/              # Auth-guarded screens
+│   │       ├── dashboard.tsx    # Interview history + stats
+│   │       ├── new-interview.tsx# 4-step interview wizard
+│   │       ├── interview/[id].tsx  # Live interview session (chat UI)
+│   │       └── report/[id].tsx     # Post-interview feedback report
+│   ├── components/
+│   │   ├── layout/              # AppShell, animated Sidebar drawer
+│   │   └── ui/                  # ScoreRing (SVG), InterviewCard
+│   ├── lib/
+│   │   ├── api.ts               # API client + expo-secure-store auth
+│   │   └── auth-context.tsx     # Auth React context
+│   ├── theme.ts                 # Design tokens (colors, typography)
+│   ├── app.json                 # Expo config
+│   └── eas.json                 # EAS Build profiles (dev / preview / prod)
 └── backend/                     # FastAPI + LangGraph + ChromaDB
     ├── agents/
     │   ├── conductor.py         # Conversational interview conductor (main agent)
@@ -85,7 +117,7 @@ uvicorn main:app --reload --port 8000
 
 ---
 
-## 2. Frontend Setup
+## 2. Frontend Setup (Web)
 
 ```bash
 cd frontend
@@ -102,7 +134,32 @@ http://localhost:3000
 
 ---
 
-## 3. Environment Variables
+## 3. Mobile Setup
+
+```bash
+cd mobile
+
+npm install
+
+# Fastest: run in Expo Go (no build needed)
+npx expo start
+```
+
+Scan the QR code in the terminal with the **Expo Go** app (phone and machine must be on the same WiFi — press `t` in the terminal for tunnel mode if the QR scan fails).
+
+**Build a shareable Android APK:**
+
+```bash
+npm install -g eas-cli
+eas login
+eas build --profile preview --platform android
+```
+
+EAS builds in the cloud (~5–10 min) and returns a download link for the `.apk`.
+
+---
+
+## 4. Environment Variables
 
 ### backend/.env
 
@@ -123,6 +180,12 @@ http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
+### mobile/.env
+
+```env
+EXPO_PUBLIC_API_URL=http://localhost:8000
+```
+
 ---
 
 # Models Used
@@ -141,7 +204,8 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 16, TypeScript, TailwindCSS |
+| Web Frontend | Next.js 16, TypeScript, TailwindCSS |
+| Mobile | React Native (Expo SDK), Expo Router, TypeScript, react-native-svg, expo-secure-store |
 | Backend | Python 3.11, FastAPI, LangGraph |
 | AI Agents | Groq (Llama 3.3), Google Gemini 2.5 Flash |
 | Embeddings | sentence-transformers (`BAAI/bge-small-en-v1.5`) or Google `text-embedding-004` |
@@ -149,7 +213,8 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 | Graph State | LangGraph + AsyncPostgresSaver (Postgres-backed checkpointing) |
 | Relational DB | PostgreSQL (async SQLAlchemy + asyncpg) |
 | Web Research | Tavily (search) + Firecrawl (scraping) + Anakin (Reddit) |
-| Auth | Email-based identity (no password), localStorage session |
+| Auth | Email-based identity (no password) — `localStorage` on web, `expo-secure-store` on mobile |
+| Mobile Build | EAS Build (Expo Application Services) |
 | Containerization | Docker + docker-compose |
 
 ---
@@ -161,3 +226,4 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 - **Postgres-backed graph checkpointing** — `AsyncPostgresSaver` means in-progress interviews survive server restarts.
 - **Research caching** — `ResearchProfile` table caches pipeline output per company/role, so repeat interviews reuse the same knowledge base without re-running the expensive pipeline.
 - **Section coverage guardrails** — the conductor is given explicit coverage status per section and a per-section question cap, ensuring all areas of the interview are visited even if the conversation gravitates toward one topic.
+- **One backend, two clients** — the web and mobile apps share a single FastAPI contract (`/start`, `/answer`, `/end`, `/reports/:id`), so all interview logic, scoring, and report generation lives in one place instead of being duplicated per platform.
