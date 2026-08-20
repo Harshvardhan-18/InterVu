@@ -1,8 +1,8 @@
-ExtractorModel = "meta-llama/llama-4-scout-17b-16e-instruct"
+ExtractorModel = "openai/gpt-oss-120b"
 
-BlueprintModel = "llama-3.3-70b-versatile"
+BlueprintModel = "openai/gpt-oss-120b"
 
-ConductorModel= "llama-3.3-70b-versatile"
+ConductorModel= "openai/gpt-oss-120b"
 
 EvaluatorModel= "openai/gpt-oss-120b"
 
