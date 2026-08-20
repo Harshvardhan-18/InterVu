@@ -7,8 +7,10 @@
 import * as SecureStore from 'expo-secure-store';
 
 const BASE = process.env.EXPO_PUBLIC_API_URL ?? 'https://intervu.harshvardhan18.in';
+console.log('API BASE URL:', BASE);
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  console.log(`API request: ${path}`, init);
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...init,

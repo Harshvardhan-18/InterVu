@@ -3,6 +3,11 @@ InterVu FastAPI Application Entry Point
 """
 
 from __future__ import annotations
+import asyncio
+import sys
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from contextlib import asynccontextmanager
 import os
@@ -16,7 +21,6 @@ from api.interview import router as interview_router
 from api.report import router as report_router
 from db.postgres import create_tables
 from api.auth import router as auth_router
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -37,7 +41,7 @@ app = FastAPI(
 # ── CORS ───────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FRONTEND_URL") ,"http://localhost:3000"],  # Next.js dev server
+    allow_origins=[os.getenv("FRONTEND_URL") ,"http://localhost:3000","http://localhost:8081"],  # Next.js dev server
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

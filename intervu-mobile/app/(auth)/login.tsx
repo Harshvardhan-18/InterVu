@@ -29,8 +29,8 @@ export default function LoginScreen() {
       const result = await api.auth.login({ name: name.trim(), email: email.trim() });
       await login(result);
       router.replace('/(tabs)/dashboard');
-    } catch (e) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } catch (e: any) {
+      Alert.alert('Login Error', e?.message ?? 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,3 @@
-"use client";
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth as authStore, type LoginResponse } from './api';
 
