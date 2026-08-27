@@ -1,6 +1,6 @@
 # intervu-admin
 
-An internal **admin and analytics companion** for the [InterVu](https://github.com/Harshvardhan18/intervu)
+An internal **admin and analytics companion** for the [InterVu](https://github.com/Harshvardhan-18/intervu)
 AI mock-interview platform.
 
 > **This service is completely read-only.**
@@ -165,7 +165,7 @@ GET /api/interviews/?search=backend
 ```bash
 curl -X POST http://127.0.0.1:8000/api/token/ \
      -H "Content-Type: application/json" \
-     -d '{"username": "admin", "password": "changeme"}'
+     -d '{"username": "admin", "password": "<your-password>"}'
 ```
 
 Then use the `access` token as a Bearer header:
