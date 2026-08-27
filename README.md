@@ -70,8 +70,6 @@ InterVu/
             └── dev_seed.json    # Synthetic data for local dev (no real DB needed)
 ```
 
-> **`intervu-admin` is strictly read-only.** It never writes to InterVu tables, never runs migrations against the existing schema, and has no dependency on the FastAPI service being running.
-
 ---
 
 # Getting Started
