@@ -1,0 +1,490 @@
+[
+  {
+    "model": "analytics.user",
+    "pk": 1,
+    "fields": {
+      "name": "Alice Dev",
+      "email": "alice@example.com",
+      "created_at": "2025-01-10T09:00:00Z"
+    }
+  },
+  {
+    "model": "analytics.user",
+    "pk": 2,
+    "fields": {
+      "name": "Bob Tester",
+      "email": "bob@example.com",
+      "created_at": "2025-01-15T14:30:00Z"
+    }
+  },
+  {
+    "model": "analytics.user",
+    "pk": 3,
+    "fields": {
+      "name": "Carol Demo",
+      "email": "carol@example.com",
+      "created_at": "2025-02-01T11:00:00Z"
+    }
+  },
+  {
+    "model": "analytics.interview",
+    "pk": 1,
+    "fields": {
+      "user_id": 1,
+      "company": "Google",
+      "role": "Software Engineer",
+      "difficulty": "hard",
+      "status": "completed",
+      "blueprint": {
+        "rounds": [
+          "technical",
+          "behavioral",
+          "system_design"
+        ]
+      },
+      "created_at": "2025-01-11T10:00:00Z"
+    }
+  },
+  {
+    "model": "analytics.interview",
+    "pk": 2,
+    "fields": {
+      "user_id": 1,
+      "company": "Stripe",
+      "role": "Backend Engineer",
+      "difficulty": "medium",
+      "status": "completed",
+      "blueprint": {
+        "rounds": [
+          "technical",
+          "behavioral"
+        ]
+      },
+      "created_at": "2025-01-20T09:30:00Z"
+    }
+  },
+  {
+    "model": "analytics.interview",
+    "pk": 3,
+    "fields": {
+      "user_id": 2,
+      "company": "Airbnb",
+      "role": "Full Stack Engineer",
+      "difficulty": "medium",
+      "status": "in_progress",
+      "blueprint": null,
+      "created_at": "2025-01-28T16:00:00Z"
+    }
+  },
+  {
+    "model": "analytics.interview",
+    "pk": 4,
+    "fields": {
+      "user_id": 3,
+      "company": "OpenAI",
+      "role": "ML Engineer",
+      "difficulty": "hard",
+      "status": "completed",
+      "blueprint": {
+        "rounds": [
+          "technical",
+          "research",
+          "behavioral"
+        ]
+      },
+      "created_at": "2025-02-05T13:00:00Z"
+    }
+  },
+  {
+    "model": "analytics.question",
+    "pk": 1,
+    "fields": {
+      "interview_id": 1,
+      "question": "Explain the difference between process and thread.",
+      "section": "technical",
+      "question_type": "conceptual",
+      "order_index": 0
+    }
+  },
+  {
+    "model": "analytics.question",
+    "pk": 2,
+    "fields": {
+      "interview_id": 1,
+      "question": "Design a URL shortener like bit.ly. Walk me through your architecture.",
+      "section": "technical",
+      "question_type": "system_design",
+      "order_index": 1
+    }
+  },
+  {
+    "model": "analytics.question",
+    "pk": 3,
+    "fields": {
+      "interview_id": 1,
+      "question": "Tell me about a time you resolved a conflict with a teammate.",
+      "section": "behavioral",
+      "question_type": "behavioral",
+      "order_index": 2
+    }
+  },
+  {
+    "model": "analytics.question",
+    "pk": 4,
+    "fields": {
+      "interview_id": 2,
+      "question": "How does Python's GIL affect multi-threaded programs?",
+      "section": "technical",
+      "question_type": "conceptual",
+      "order_index": 0
+    }
+  },
+  {
+    "model": "analytics.question",
+    "pk": 5,
+    "fields": {
+      "interview_id": 2,
+      "question": "Given a list of transactions, find all pairs that sum to a target amount.",
+      "section": "technical",
+      "question_type": "coding",
+      "order_index": 1
+    }
+  },
+  {
+    "model": "analytics.question",
+    "pk": 6,
+    "fields": {
+      "interview_id": 4,
+      "question": "What is the difference between fine-tuning and RLHF?",
+      "section": "research",
+      "question_type": "conceptual",
+      "order_index": 0
+    }
+  },
+  {
+    "model": "analytics.question",
+    "pk": 7,
+    "fields": {
+      "interview_id": 4,
+      "question": "Design a pipeline to evaluate LLM outputs at scale.",
+      "section": "technical",
+      "question_type": "system_design",
+      "order_index": 1
+    }
+  },
+  {
+    "model": "analytics.response",
+    "pk": 1,
+    "fields": {
+      "question_id": 1,
+      "answer": "A process is an independent unit of execution with its own memory space, while a thread shares memory with other threads in the same process. Context switching is cheaper for threads.",
+      "score": 8.5,
+      "evaluation": {
+        "clarity": 9,
+        "accuracy": 8,
+        "depth": 8
+      },
+      "feedback": "Good answer. Could have mentioned IPC and thread safety challenges.",
+      "created_at": "2025-01-11T10:10:00Z"
+    }
+  },
+  {
+    "model": "analytics.response",
+    "pk": 2,
+    "fields": {
+      "question_id": 2,
+      "answer": "I would use a hash map with base62 encoding for the short code, a Redis cache for hot links, and sharding on the hash key for horizontal scaling.",
+      "score": 9.0,
+      "evaluation": {
+        "clarity": 9,
+        "scalability": 9,
+        "completeness": 9
+      },
+      "feedback": "Excellent. Consider also discussing collision handling and analytics.",
+      "created_at": "2025-01-11T10:25:00Z"
+    }
+  },
+  {
+    "model": "analytics.response",
+    "pk": 3,
+    "fields": {
+      "question_id": 3,
+      "answer": "During a feature deadline, I disagreed with a teammate on API design. We held a structured tech discussion, documented trade-offs, and reached consensus on a hybrid approach.",
+      "score": 7.5,
+      "evaluation": {
+        "structure": 8,
+        "outcome": 7,
+        "empathy": 7
+      },
+      "feedback": "Good structure. Needs stronger emphasis on the impact of the resolution.",
+      "created_at": "2025-01-11T10:35:00Z"
+    }
+  },
+  {
+    "model": "analytics.response",
+    "pk": 4,
+    "fields": {
+      "question_id": 4,
+      "answer": "The GIL prevents multiple threads from executing Python bytecode simultaneously, making CPU-bound tasks ineffective with threading. Use multiprocessing or async IO instead.",
+      "score": 8.0,
+      "evaluation": {
+        "clarity": 9,
+        "accuracy": 8,
+        "depth": 7
+      },
+      "feedback": "Solid. Could mention that I/O-bound tasks benefit from threading despite the GIL.",
+      "created_at": "2025-01-20T09:45:00Z"
+    }
+  },
+  {
+    "model": "analytics.response",
+    "pk": 5,
+    "fields": {
+      "question_id": 5,
+      "answer": "I used a hash set to store seen values and checked for target minus current value on each iteration, achieving O(n) time.",
+      "score": 9.5,
+      "evaluation": {
+        "correctness": 10,
+        "efficiency": 9,
+        "clarity": 9
+      },
+      "feedback": "Perfect. Clean and optimal solution.",
+      "created_at": "2025-01-20T10:05:00Z"
+    }
+  },
+  {
+    "model": "analytics.response",
+    "pk": 6,
+    "fields": {
+      "question_id": 6,
+      "answer": "Fine-tuning adjusts model weights on a labelled dataset. RLHF trains a reward model from human preferences and uses PPO to align the LLM with those preferences.",
+      "score": 9.0,
+      "evaluation": {
+        "accuracy": 9,
+        "depth": 9,
+        "clarity": 9
+      },
+      "feedback": "Excellent. Could also mention DPO as an alternative alignment method.",
+      "created_at": "2025-02-05T13:15:00Z"
+    }
+  },
+  {
+    "model": "analytics.response",
+    "pk": 7,
+    "fields": {
+      "question_id": 7,
+      "answer": "I would build a batch evaluation harness: sample outputs, run judge LLMs and human raters, store results in a columnar DB, and visualise with a metrics dashboard.",
+      "score": 8.5,
+      "evaluation": {
+        "completeness": 9,
+        "scalability": 8,
+        "clarity": 8
+      },
+      "feedback": "Strong design. Add discussion on statistical significance and bias in judge LLMs.",
+      "created_at": "2025-02-05T13:30:00Z"
+    }
+  },
+  {
+    "model": "analytics.report",
+    "pk": 1,
+    "fields": {
+      "interview_id": 1,
+      "overall_score": 8.33,
+      "report_json": {
+        "summary": "Strong performance across technical and behavioral rounds.",
+        "strengths": [
+          "System design",
+          "Clear communication"
+        ],
+        "areas_for_improvement": [
+          "Deeper behavioral impact statements"
+        ],
+        "recommendation": "Advance to next round"
+      },
+      "created_at": "2025-01-11T11:00:00Z"
+    }
+  },
+  {
+    "model": "analytics.report",
+    "pk": 2,
+    "fields": {
+      "interview_id": 2,
+      "overall_score": 8.75,
+      "report_json": {
+        "summary": "Excellent coding and conceptual depth.",
+        "strengths": [
+          "Algorithm efficiency",
+          "Python internals knowledge"
+        ],
+        "areas_for_improvement": [
+          "Broader discussion of edge cases"
+        ],
+        "recommendation": "Strong hire"
+      },
+      "created_at": "2025-01-20T10:30:00Z"
+    }
+  },
+  {
+    "model": "analytics.report",
+    "pk": 3,
+    "fields": {
+      "interview_id": 4,
+      "overall_score": 8.75,
+      "report_json": {
+        "summary": "Deep ML knowledge with strong system thinking.",
+        "strengths": [
+          "LLM alignment knowledge",
+          "Evaluation system design"
+        ],
+        "areas_for_improvement": [
+          "Statistical rigor in evaluation pipelines"
+        ],
+        "recommendation": "Strong hire"
+      },
+      "created_at": "2025-02-05T14:00:00Z"
+    }
+  },
+  {
+    "model": "analytics.researchprofile",
+    "pk": 1,
+    "fields": {
+      "company": "Google",
+      "role": "Software Engineer",
+      "difficulty": "Hard",
+      "skills": [
+        "Data Structures",
+        "Algorithms",
+        "System Design"
+      ],
+      "technologies": [
+        "Python",
+        "Go",
+        "Kubernetes"
+      ],
+      "topics": [
+        "Distributed Systems",
+        "APIs",
+        "Scalability"
+      ],
+      "rounds": [
+        "Phone Screen",
+        "Technical",
+        "System Design",
+        "Behavioral",
+        "Hiring Committee"
+      ],
+      "behavioral_patterns": [
+        "Ownership",
+        "Collaboration",
+        "Ambiguity tolerance"
+      ],
+      "key_insights": [
+        "Focus on scalability first",
+        "Communication matters as much as solution"
+      ],
+      "dsa_questions": [
+        "Graph traversal",
+        "DP on grids",
+        "Heap problems"
+      ],
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "analytics.researchprofile",
+    "pk": 2,
+    "fields": {
+      "company": "Stripe",
+      "role": "Backend Engineer",
+      "difficulty": "Medium",
+      "skills": [
+        "APIs",
+        "Reliability",
+        "Financial Systems"
+      ],
+      "technologies": [
+        "Ruby",
+        "Python",
+        "PostgreSQL",
+        "Redis"
+      ],
+      "topics": [
+        "Payment processing",
+        "Idempotency",
+        "Webhooks"
+      ],
+      "rounds": [
+        "Recruiter Screen",
+        "Technical",
+        "System Design",
+        "Bar Raiser"
+      ],
+      "behavioral_patterns": [
+        "Reliability focus",
+        "User empathy",
+        "Data-driven"
+      ],
+      "key_insights": [
+        "Correctness over speed for financial data",
+        "Idempotency is key"
+      ],
+      "dsa_questions": [
+        "Hash maps",
+        "Sliding window",
+        "Graph problems"
+      ],
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "analytics.researchprofile",
+    "pk": 3,
+    "fields": {
+      "company": "OpenAI",
+      "role": "ML Engineer",
+      "difficulty": "Hard",
+      "skills": [
+        "Machine Learning",
+        "LLMs",
+        "Evaluation",
+        "Python"
+      ],
+      "technologies": [
+        "PyTorch",
+        "Transformers",
+        "CUDA",
+        "Ray"
+      ],
+      "topics": [
+        "RLHF",
+        "Fine-tuning",
+        "Scaling laws",
+        "Alignment"
+      ],
+      "rounds": [
+        "Technical Screen",
+        "Research Discussion",
+        "Coding",
+        "System Design"
+      ],
+      "behavioral_patterns": [
+        "Research mindset",
+        "Safety awareness",
+        "First-principles thinking"
+      ],
+      "key_insights": [
+        "Alignment understanding expected at all levels",
+        "Systems thinking valued"
+      ],
+      "dsa_questions": [
+        "Matrix operations",
+        "Graph algorithms",
+        "Dynamic programming"
+      ],
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  }
+]
