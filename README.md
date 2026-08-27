@@ -27,32 +27,50 @@ InterVu/
 │       │   │   └── [id]/        # Live interview session (chat UI)
 │       │   └── report/[id]/     # Post-interview feedback report
 │       └── layout.tsx
-└── backend/                     # FastAPI + LangGraph + ChromaDB
-    ├── agents/
-    │   ├── conductor.py         # Conversational interview conductor (main agent)
-    │   ├── evaluator.py         # Answer scoring (correctness/depth/communication/problem-solving)
-    │   ├── feedback.py          # Post-interview report generation
-    │   ├── extractor.py         # Structured knowledge extraction from web content
-    │   └── blueprint.py         # Interview plan generation
-    ├── graph/
-    │   └── interview_graph.py   # LangGraph state machine (Postgres-backed checkpointing)
-    ├── rag/
-    │   ├── vector_store.py      # ChromaDB document ingestion
-    │   ├── retriever.py         # Semantic search for question context
-    │   └── embeddings.py        # sentence-transformers / Google embeddings
-    ├── search/
-    │   ├── tavily.py            # Multi-category web search (concurrent)
-    │   ├── firecrawl.py         # Full-page markdown scraping (concurrent)
-    │   └── anakin.py            # Reddit thread scraping
-    ├── normalization/           # Round name canonicalization, dedup, fuzzy matching
-    ├── pipeline.py              # End-to-end research pipeline (fully async)
-    ├── db/postgres.py           # PostgreSQL models (SQLAlchemy async)
-    ├── api/
-    │   ├── interview.py         # /start, /answer, /end, /complete
-    │   ├── report.py            # /reports/:id
-    │   └── auth.py              # /auth/login (email-based, no password)
-    └── main.py                  # FastAPI app + lifespan (DB + graph init)
+├── backend/                     # FastAPI + LangGraph + ChromaDB
+│   ├── agents/
+│   │   ├── conductor.py         # Conversational interview conductor (main agent)
+│   │   ├── evaluator.py         # Answer scoring (correctness/depth/communication/problem-solving)
+│   │   ├── feedback.py          # Post-interview report generation
+│   │   ├── extractor.py         # Structured knowledge extraction from web content
+│   │   └── blueprint.py         # Interview plan generation
+│   ├── graph/
+│   │   └── interview_graph.py   # LangGraph state machine (Postgres-backed checkpointing)
+│   ├── rag/
+│   │   ├── vector_store.py      # ChromaDB document ingestion
+│   │   ├── retriever.py         # Semantic search for question context
+│   │   └── embeddings.py        # sentence-transformers / Google embeddings
+│   ├── search/
+│   │   ├── tavily.py            # Multi-category web search (concurrent)
+│   │   ├── firecrawl.py         # Full-page markdown scraping (concurrent)
+│   │   └── anakin.py            # Reddit thread scraping
+│   ├── normalization/           # Round name canonicalization, dedup, fuzzy matching
+│   ├── pipeline.py              # End-to-end research pipeline (fully async)
+│   ├── db/postgres.py           # PostgreSQL models (SQLAlchemy async)
+│   ├── api/
+│   │   ├── interview.py         # /start, /answer, /end, /complete
+│   │   ├── report.py            # /reports/:id
+│   │   └── auth.py              # /auth/login (email-based, no password)
+│   └── main.py                  # FastAPI app + lifespan (DB + graph init)
+└── intervu-admin/               # Django 5 + DRF — read-only admin & analytics panel
+    ├── manage.py
+    ├── requirements.txt         # Isolated venv — never mixed with backend deps
+    ├── .env.example
+    ├── intervu_admin/           # Django project config (settings, root urls, wsgi)
+    │   ├── settings.py          # Dual DB: default (SQLite) + intervu (Neon Postgres)
+    │   └── urls.py              # /admin/, /api/, /api/token/
+    └── analytics/               # Single Django app
+        ├── models.py            # Reflected models — all managed=False (never migrated)
+        ├── admin.py             # Read-only admin UI (has_*_permission -> False)
+        ├── serializers.py       # DRF serializers for all InterVu models
+        ├── views.py             # ReadOnlyModelViewSet + /evaluations/ /report/ actions
+        ├── filters.py           # django-filter FilterSets (company, role, status, date)
+        ├── routers.py           # DB router — analytics app -> intervu connection
+        └── fixtures/
+            └── dev_seed.json    # Synthetic data for local dev (no real DB needed)
 ```
+
+> **`intervu-admin` is strictly read-only.** It never writes to InterVu tables, never runs migrations against the existing schema, and has no dependency on the FastAPI service being running.
 
 ---
 
@@ -102,7 +120,54 @@ http://localhost:3000
 
 ---
 
-## 3. Environment Variables
+## 3. Admin & Analytics Panel Setup (intervu-admin)
+
+A separate Django service that provides a read-only admin UI and REST API over the existing InterVu database. Runs independently — the FastAPI backend does not need to be running.
+
+```bash
+cd intervu-admin
+
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+# macOS/Linux
+# source .venv/bin/activate
+
+pip install -r requirements.txt
+
+# Copy and configure env (fill in INTERVU_DB_* with your Neon/Postgres credentials)
+cp .env.example .env
+
+# Create Django's own tables (auth, sessions, admin log -- NOT InterVu tables)
+python manage.py migrate
+
+# Create a local superuser for the admin UI
+python manage.py createsuperuser
+
+# Run on a different port to avoid conflict with the FastAPI backend
+python manage.py runserver 8002
+```
+
+Access at:
+- **Admin UI:** http://localhost:8002/admin/
+- **API root:** http://localhost:8002/api/
+- **JWT login:** `POST` http://localhost:8002/api/token/
+
+### Key API endpoints
+
+| Method | URL | Description |
+|--------|-----|-------------|
+| `GET` | `/api/interviews/` | List all interviews (filterable by company, role, status, date) |
+| `GET` | `/api/interviews/<id>/evaluations/` | All questions + response scores for a session |
+| `GET` | `/api/interviews/<id>/report/` | Final evaluation report |
+| `GET` | `/api/users/<id>/interviews/` | All interviews for a user |
+| `GET` | `/api/research-profiles/` | Company/role intelligence profiles |
+
+---
+
+## 4. Environment Variables
 
 ### backend/.env
 
@@ -123,6 +188,19 @@ http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
+### intervu-admin/.env
+
+| Variable | Description |
+|----------|-------------|
+| `DJANGO_SECRET_KEY` | Any long random string |
+| `DJANGO_DEBUG` | `True` for local dev |
+| `INTERVU_DB_ENGINE` | `django.db.backends.postgresql` |
+| `INTERVU_DB_NAME` | Database name (e.g. `neondb`) |
+| `INTERVU_DB_USER` | Postgres user |
+| `INTERVU_DB_PASSWORD` | Postgres password |
+| `INTERVU_DB_HOST` | Host (e.g. Neon pooler endpoint) |
+| `INTERVU_DB_PORT` | `5432` |
+
 ---
 
 # Models Used
@@ -140,17 +218,20 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 # Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
+|-------|------------|
 | Frontend | Next.js 16, TypeScript, TailwindCSS |
 | Backend | Python 3.11, FastAPI, LangGraph |
 | AI Agents | Groq (Llama 3.3), Google Gemini 2.5 Flash |
 | Embeddings | sentence-transformers (`BAAI/bge-small-en-v1.5`) or Google `text-embedding-004` |
 | Vector DB | ChromaDB (local persistent) |
 | Graph State | LangGraph + AsyncPostgresSaver (Postgres-backed checkpointing) |
-| Relational DB | PostgreSQL (async SQLAlchemy + asyncpg) |
+| Relational DB | PostgreSQL via Neon (async SQLAlchemy + asyncpg) |
 | Web Research | Tavily (search) + Firecrawl (scraping) + Anakin (Reddit) |
 | Auth | Email-based identity (no password), localStorage session |
 | Containerization | Docker + docker-compose |
+| Admin Panel | Django 5.1, Django REST Framework 3.15, django-filter |
+| Admin Auth | Session auth + JWT (djangorestframework-simplejwt) |
+| Admin DB Driver | psycopg2-binary (sync, separate venv from asyncpg) |
 
 ---
 
@@ -161,3 +242,4 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 - **Postgres-backed graph checkpointing** — `AsyncPostgresSaver` means in-progress interviews survive server restarts.
 - **Research caching** — `ResearchProfile` table caches pipeline output per company/role, so repeat interviews reuse the same knowledge base without re-running the expensive pipeline.
 - **Section coverage guardrails** — the conductor is given explicit coverage status per section and a per-section question cap, ensuring all areas of the interview are visited even if the conversation gravitates toward one topic.
+- **Read-only admin as a separate service** — `intervu-admin` is an entirely separate Django process with its own virtualenv and dependencies. It connects to the same Neon Postgres database using `managed = False` models and a dedicated DB router, so it can never run migrations or write to InterVu's tables, even accidentally. The FastAPI backend is completely unaware of its existence.
