@@ -13,9 +13,13 @@ import asyncio  # noqa: E402
 import logging  # noqa: E402
 import os  # noqa: E402
 import re  # noqa: E402
+import sys  # noqa: E402
 import time  # noqa: E402
 import uuid  # noqa: E402
 from contextlib import asynccontextmanager  # noqa: E402
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from fastapi import FastAPI, Request  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
@@ -182,7 +186,7 @@ async def ready() -> JSONResponse:
     """Readiness: the database answers and the interview graph is initialised."""
     checks: dict[str, str] = {}
     try:
-        await asyncio.wait_for(_database_ready(), timeout=5)
+        await asyncio.wait_for(_database_ready(), timeout=15)
         checks["database"] = "ok"
     except Exception as exc:  # noqa: BLE001 - report, do not crash
         logger.warning("Readiness check: database unavailable: %s", exc)
