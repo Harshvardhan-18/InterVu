@@ -12,6 +12,8 @@ from typing import Any
 import chromadb
 from chromadb import Collection
 
+from config import CHROMA_COLLECTION, CHROMA_PATH
+
 from .embeddings import get_embedding_function
 
 
@@ -42,8 +44,8 @@ class VectorStore:
 
     def __init__(
         self,
-        collection_name: str = "intervu_kb_v2",
-        chroma_path: str = "./chroma_db",
+        collection_name: str = CHROMA_COLLECTION,
+        chroma_path: str = CHROMA_PATH,
     ) -> None:
         self.client = chromadb.PersistentClient(path=chroma_path)
         self.collection: Collection = self.client.get_or_create_collection(

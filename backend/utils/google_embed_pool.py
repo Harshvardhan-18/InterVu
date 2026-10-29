@@ -3,12 +3,15 @@
 import os
 import re
 import itertools
+import logging
 import threading
 from dotenv import load_dotenv
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from chromadb import EmbeddingFunction
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 class GoogleEmbedPool(EmbeddingFunction):
@@ -43,7 +46,7 @@ class GoogleEmbedPool(EmbeddingFunction):
         self._cycle = itertools.cycle(self._clients)
         self._lock = threading.Lock()
 
-        print(f"[GoogleEmbedPool] {len(keys)} key(s) loaded for 'models/gemini-embedding-001'")
+        logger.info("[GoogleEmbedPool] %d key(s) loaded for 'models/gemini-embedding-001'", len(keys))
 
     def _get_client(self) -> GoogleGenerativeAIEmbeddings:
         """Returns next client in round-robin order. Thread-safe."""

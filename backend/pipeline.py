@@ -19,7 +19,9 @@ from rag.vector_store import VectorStore
 from normalization.normalizer import ExtractionNormalizer
 from search.anakin import AnakinAgent
 import asyncio
+import logging
 
+logger = logging.getLogger(__name__)
 
 class ResearchPipeline:
     """End-to-end research pipeline for a company/role pair."""
@@ -58,7 +60,7 @@ class ResearchPipeline:
         ranked.sort(key=lambda x: x["relevance_score"],reverse=True)
         return ranked
 
-    async def run(self, company: str, role: str) -> dict[str, Any]:
+    async def run(self, company: str, role: str, on_stage: Any = None) -> dict[str, Any]:
         """
             Run the end-to-end research pipeline.
 
@@ -69,13 +71,21 @@ class ResearchPipeline:
             Args:
                 company: Target company name.
                 role: Target role being researched.
+                on_stage: Optional async callable ``await on_stage(name)`` called
+                    with "searching", "scraping", "extracting" and "indexing"
+                    as the pipeline advances (used to stream real progress).
 
             Returns:
                 Dictionary containing extracted interview preparation data,
                 including skills, technologies, interview topics, rounds,
                 behavioral patterns, difficulty, and key insights.
         """
+        async def stage(name: str) -> None:
+            if on_stage is not None:
+                await on_stage(name)
+
         # 1. Search
+        await stage("searching")
         search_results = await self.tavily.research(company, role)
 
         ranked_results = self.rank_results(search_results)
@@ -99,9 +109,12 @@ class ResearchPipeline:
 
         selected_results = interview_results[:4] + process_results[:2] + job_results[:2]
 
-        print(f"[pipeline] Selected {len(selected_results)} results for scraping:")
+        logger.info("[pipeline] Selected %d results for scraping", len(selected_results))
         for r in selected_results:
-            print(f"[pipeline] - {r['url']} (category: {r['category']}, relevance_score: {r['relevance_score']})")
+            logger.info(
+                "[pipeline] - %s (category: %s, relevance_score: %s)",
+                r["url"], r["category"], r["relevance_score"],
+            )
 
         if(len(selected_results)<8):
             used_urls = set(r["url"] for r in selected_results)
@@ -120,11 +133,20 @@ class ResearchPipeline:
             else:
                 top_urls.append(r["url"])
 
-        # 2. Scrape non-Reddit URLs via Firecrawl; Reddit URLs via Anakin
-        scraped,reddit_scraped = await asyncio.gather(
+        await stage("scraping")
+        # 2. Scrape non-Reddit URLs via Firecrawl; Reddit URLs via Anakin.
+        # A scraper outage must not abort research: fall back to Tavily snippets.
+        scraped, reddit_scraped = await asyncio.gather(
             self.firecrawl.scrape_urls(top_urls),
-            self.anakin.scrape_urls(reddit_urls)
+            self.anakin.scrape_urls(reddit_urls),
+            return_exceptions=True,
         )
+        if isinstance(scraped, BaseException):
+            logger.warning("[pipeline] Firecrawl batch failed: %s", scraped)
+            scraped = []
+        if isinstance(reddit_scraped, BaseException):
+            logger.warning("[pipeline] Anakin batch failed: %s", reddit_scraped)
+            reddit_scraped = []
 
         # Build lookup dicts keyed by URL for O(1) access
         scraped_urls = {s["url"]: s for s in scraped}
@@ -146,7 +168,7 @@ class ResearchPipeline:
                     })
                 else:
                     # Anakin failed for this URL — fall back to Tavily snippet
-                    print(f"[pipeline] Anakin scrape failed for {r['url']}, using Tavily snippet")
+                    logger.info("[pipeline] Anakin scrape failed for %s, using Tavily snippet", r["url"])
                     all_content.append(r)
             else:
                 full = scraped_urls.get(r["url"])
@@ -159,11 +181,13 @@ class ResearchPipeline:
                     "metadata": full["metadata"],
                 })
 
+        await stage("extracting")
         # 3. Extract structured knowledge
         extracted =await self.extractor.extract(company, role, all_content)
 
         extracted = self.normalizer.normalize(extracted)
 
+        await stage("indexing")
         # 4. Embed and store in ChromaDB
         chunks_added = 0
         for item in all_content:

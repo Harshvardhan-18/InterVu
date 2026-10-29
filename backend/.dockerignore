@@ -1,44 +1,15 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.egg-info/
-dist/
-build/
-.eggs/
-
-# Virtual environment
+# Keep secrets, local state and caches out of the image.
+.env
+*.env
+.env.tmp
+!.env.example
 .venv/
 venv/
 env/
-
-# Environment files — never bake secrets into the image
-.env
-.env.*
-
-# ChromaDB data — this is runtime data, not source code
-chroma_db/
-
-# Tests
-tests/
-
-# Git
-.git/
-.gitignore
-
-# Dev tools
+__pycache__/
+*.py[cod]
 .pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Alembic versions (optional — include if you want migrations in the image)
-# alembic/versions/
-
-# Logs
+chroma_db/
+tests/
 *.log
-
-# OS
 .DS_Store
-Thumbs.db

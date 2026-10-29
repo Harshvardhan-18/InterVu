@@ -5,7 +5,7 @@ interface InterviewCardProps {
   company: string;
   role: string;
   date: string;
-  score: number;
+  score: number | null;
   status: "in_progress" | "completed" | "scheduled";
   skills?: string[];
   onClick?: () => void;
@@ -50,8 +50,10 @@ export default function InterviewCard({
   const accentColor = COMPANY_COLORS[company] ?? "#68a9ba";
   const initials = COMPANY_INITIALS[company] ?? company.slice(0, 2).toUpperCase();
 
-  const scoreColor =
-    score >= 80 ? "#22C55E" : score >= 65 ? "#F59E0B" : "#EF4444";
+  const hasScore = typeof score === "number";
+  const scoreColor = !hasScore
+    ? "var(--text-muted)"
+    : score >= 80 ? "#22C55E" : score >= 65 ? "#F59E0B" : "#EF4444";
 
   const statusConfig = {
     completed:    { label: "Completed",   bg: "rgba(34,197,94,0.12)",  border: "rgba(34,197,94,0.25)",  color: "#22C55E" },
@@ -69,6 +71,14 @@ export default function InterviewCard({
     <div
       id={id}
       onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (onClick && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       style={{
         background: "var(--surface-1)",
         border: "1px solid var(--border-subtle)",
@@ -198,9 +208,11 @@ export default function InterviewCard({
               letterSpacing: "-0.5px",
             }}
           >
-            {score}
+            {hasScore ? score : "--"}
           </div>
-          <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "2px" }}>/100</div>
+          <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "2px" }}>
+            {hasScore ? "/100" : status === "in_progress" ? "Resume" : "No score"}
+          </div>
         </div>
       </div>
     </div>

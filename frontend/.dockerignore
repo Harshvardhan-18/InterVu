@@ -1,0 +1,9 @@
+# Dependencies and build output are produced inside the image.
+node_modules/
+.next/
+out/
+# Local env files may hold secrets.
+.env
+.env.*
+*.log
+.DS_Store

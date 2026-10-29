@@ -9,15 +9,16 @@ import {
   Settings,
   Zap,
   ChevronRight,
+  LogOut,
 } from "lucide-react";
 import { auth } from "@/lib/api";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/dashboard",       label: "Dashboard",        icon: LayoutDashboard },
   { href: "/interview/new",   label: "New Interview",    icon: Mic2 },
   { href: "/dashboard",       label: "Reports",          icon: FileText,    match: "/report" },
-  { href: "/dashboard",       label: "Resume Analysis",  icon: FileSearch,  disabled: true },
+  { href: "/resume",          label: "Resume",           icon: FileSearch },
   { href: "/dashboard",       label: "Settings",         icon: Settings,    disabled: true },
 ];
 
@@ -25,6 +26,12 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const user = auth.load();
   const userName = user?.name;
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleSignOut = () => {
+    auth.clear();
+    router.replace("/login");
+  };
 
   return (
     <aside
@@ -179,12 +186,27 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
           >
             {userName?.charAt(0) || "U"}
           </div>
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {userName || "User"}
             </p>
-            <p style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.3 }}>Free Plan</p>
+            <p style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {user?.email ?? "Free Plan"}
+            </p>
           </div>
+          <button
+            id="sign-out-btn"
+            onClick={handleSignOut}
+            aria-label="Sign out"
+            title="Sign out"
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: "var(--text-muted)", padding: "6px", borderRadius: "8px",
+              display: "flex", alignItems: "center", flexShrink: 0,
+            }}
+          >
+            <LogOut size={15} />
+          </button>
         </div>
       </div>
     </aside>

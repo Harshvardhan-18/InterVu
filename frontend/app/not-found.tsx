@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function NotFound() {
   return (
     <html lang="en">
@@ -10,9 +12,9 @@ export default function NotFound() {
           <p style={{ fontSize: "80px", fontWeight: 900, lineHeight: 1, letterSpacing: "-4px", marginBottom: "8px", background: "linear-gradient(135deg,#e8fbff,#68a9ba)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>404</p>
           <h1 style={{ fontSize: "22px", fontWeight: 700, marginBottom: "8px" }}>Page not found</h1>
           <p style={{ fontSize: "13px", color: "#71717A", marginBottom: "24px" }}>The page you&apos;re looking for doesn&apos;t exist.</p>
-          <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "11px 24px", borderRadius: "12px", background: "linear-gradient(135deg,#4d8fa2,#68a9ba)", color: "#061014", textDecoration: "none", fontSize: "14px", fontWeight: 600 }}>
+          <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "11px 24px", borderRadius: "12px", background: "linear-gradient(135deg,#4d8fa2,#68a9ba)", color: "#061014", textDecoration: "none", fontSize: "14px", fontWeight: 600 }}>
             ← Back to Home
-          </a>
+          </Link>
         </div>
       </body>
     </html>

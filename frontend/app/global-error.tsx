@@ -55,6 +55,8 @@ export default function GlobalError({
           >
             Try again
           </button>
+          {/* A plain <a> is intentional: the app is in a broken state, so force a full page reload instead of client-side navigation. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
             href="/"
             style={{

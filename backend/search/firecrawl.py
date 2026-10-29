@@ -7,11 +7,14 @@ discovered during the Tavily research phase.
 
 from __future__ import annotations
 import asyncio
+import logging
 import os
 from typing import Any
 from dotenv import load_dotenv
 from firecrawl import FirecrawlApp
 load_dotenv()  # Load FIRECRAWL_API_KEY from .env file
+
+logger = logging.getLogger(__name__)
 
 class FirecrawlAgent:
     """Fetches and cleans web page content via Firecrawl."""
@@ -41,7 +44,7 @@ class FirecrawlAgent:
             content=self.clean_content(result.markdown)
             content=content[:6000]  # Truncate to 6k chars to avoid huge docs
             metadata=(dict(result.metadata) if result.metadata else {})
-            print(f"[firecrawl] Scraped {url} (content length: {len(content)})")
+            logger.info("[firecrawl] Scraped %s (content length: %d)", url, len(content))
             return{
                 "url": url,
                 "content": content,
@@ -50,7 +53,7 @@ class FirecrawlAgent:
                 "metadata": metadata
             }
         except Exception as e:
-            print(f"[firecrawl] Error scraping {url}: {e}")
+            logger.warning("[firecrawl] Error scraping %s: %s", url, e)
             return {"url": url, "content": "", "title": "","content_length": 0, "error": str(e)}
         
     def clean_content(self, text: str) -> str:

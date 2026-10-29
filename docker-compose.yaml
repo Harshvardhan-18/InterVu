@@ -1,19 +1,88 @@
+# InterVu local stack.
+#
+#   docker compose up -d postgres          # database only (default workflow)
+#   docker compose --profile app up -d     # database + backend + frontend
+#
+# Secrets come from .env next to this file (see .env.example) and from
+# backend/.env; nothing secret is written here. Every published port is bound
+# to 127.0.0.1, so the stack is reachable from this machine only. Services
+# listen on 0.0.0.0 inside their containers so they can reach each other over
+# the compose network.
+
 services:
   postgres:
     image: postgres:17
-    
     container_name: postgres
-
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env next to docker-compose.yaml}
       POSTGRES_DB: intervu
-
     ports:
-      - "5432:5432"
-
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d intervu"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  backend:
+    profiles: ["app"]
+    build:
+      context: ./backend
+    # API keys, AUTH_SECRET, etc. (see backend/.env.example). Values set under
+    # `environment` below take precedence over this file.
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      # Inside the compose network the database host is the "postgres" service.
+      # POSTGRES_PASSWORD must be URL-safe (letters, digits, - _ . ~) because
+      # it is embedded in these URLs.
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/intervu
+      DATABASE_URL_PSYCOPG: postgresql://postgres:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/intervu
+      DB_SSL: disable
+      # Unset ENV is treated as production (AUTH_SECRET required, AUTH_DISABLED
+      # ignored). This local stack defaults to development; set ENV in ./.env
+      # to override. `make up` generates AUTH_SECRET in backend/.env first.
+      # Note: this value beats ENV in backend/.env under compose, so ENV must
+      # be set in the root ./.env (not backend/.env) when using this stack.
+      ENV: ${ENV:-development}
+      CHROMA_PATH: /app/chroma_db
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - chroma_data:/app/chroma_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    restart: unless-stopped
+
+  frontend:
+    profiles: ["app"]
+    build:
+      context: ./frontend
+      args:
+        # Inlined into the browser bundle at build time. The browser runs on
+        # the host, so it reaches the backend through the published port.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+  chroma_data:

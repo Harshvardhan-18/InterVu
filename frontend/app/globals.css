@@ -383,3 +383,51 @@ body {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ─── Print (report "Print / Save PDF") ──────────────────────────────── */
+@media print {
+  :root {
+    --bg-base: #ffffff;
+    --bg-subtle: #ffffff;
+    --bg-card: #ffffff;
+    --surface-1: #ffffff;
+    --surface-2: #f4f7f8;
+    --surface-3: #e3eaed;
+    --text-primary: #0b1318;
+    --text-secondary: #26414c;
+    --text-muted: #4f6b76;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #0b1318 !important;
+  }
+
+  .no-print,
+  .app-sidebar-drawer,
+  .app-sidebar-spacer,
+  .app-mobile-topbar {
+    display: none !important;
+  }
+
+  main {
+    overflow: visible !important;
+  }
+
+  .print-area {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .print-avoid-break,
+  .report-hero-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+  }
+
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

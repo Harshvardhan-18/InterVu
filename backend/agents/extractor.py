@@ -6,18 +6,22 @@ into structured knowledge: skills, topics, interview rounds, difficulty.
 """
 
 from __future__ import annotations
+
+import asyncio
+import logging
 from collections import Counter
 from typing import Any
-import json
-import os
+
+from tenacity import retry, stop_after_attempt, wait_exponential
+
 from config import ExtractorModel as model
-import asyncio
 from prompts.extractor import EXTRACTOR_PROMPT
-from dotenv import load_dotenv
-from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 from schemas.extractor import ExtractionResult
 from utils.groq_pool import GroqKeyPool
-load_dotenv()  # Load GROQ_API_KEY from .env file
+from utils import usage
+from utils.llm_json import extract_json_object
+
+logger = logging.getLogger(__name__)
 
 MAX_CONTENT_CHARS = 16000
 
@@ -28,10 +32,33 @@ class ExtractorAgent:
         self.llm = GroqKeyPool(model=model).get()
 
     async def extract(self, company: str, role: str, raw_content: list[dict[str, Any]]) -> dict[str, Any]:
-        partials = await asyncio.gather(
-            *(self.extract_doc(company, role, d) for d in raw_content)
+        """
+        Extract and merge knowledge from every document.
+
+        One failing document does not discard the others. The merged result
+        carries ``extraction_failed``: True when there were documents but every
+        one of them failed (or there was nothing to extract), so callers can
+        avoid caching an empty profile.
+        """
+        outcomes = await asyncio.gather(
+            *(self.extract_doc(company, role, d) for d in raw_content),
+            return_exceptions=True,
         )
-        return self.merge_results(list(partials))
+        partials: list[dict[str, Any]] = []
+        for doc, outcome in zip(raw_content, outcomes):
+            if isinstance(outcome, BaseException):
+                logger.warning("[extractor] Giving up on %s: %s", doc.get("url", "unknown"), outcome)
+            else:
+                partials.append(outcome)
+
+        merged = self.merge_results(partials)
+        merged["extraction_failed"] = not partials
+        if not partials:
+            logger.error(
+                "[extractor] No knowledge extracted for %s / %s (%d document(s), all failed or none found).",
+                company, role, len(raw_content),
+            )
+        return merged
     
     @retry(
         wait=wait_exponential(multiplier=1, min=10, max=60),  # 25s → 50s → 60s
@@ -54,14 +81,11 @@ class ExtractorAgent:
         )
         try:
             response = await self.llm.ainvoke(prompt)
-            raw = response.content.strip()
-            start, end = raw.find("{"), raw.rfind("}")
-            if start == -1 or end == -1:
-                raise ValueError(f"No JSON in response: {raw[:300]}")
-            validated = ExtractionResult(**json.loads(raw[start:end + 1]))
+            usage.record("extractor", response, self.llm)
+            validated = ExtractionResult(**extract_json_object(response))
             return validated.model_dump()
         except Exception as e:
-            print(f"[extractor] LLM error: {e}")
+            logger.warning("[extractor] LLM error: %s", e)
             raise   # let tenacity retry
 
     def merge_results(self,partials:list[dict[str,Any]])->dict[str,Any]:
@@ -74,7 +98,7 @@ class ExtractorAgent:
         dsa_questions = set()
 
         difficulties = []
-        print(f"[extractor] Merging {len(partials)} partial extraction results")
+        logger.info("[extractor] Merging %d partial extraction results", len(partials))
         for result in partials:
             skills.update(
                 s for s in result.get("skills", [])

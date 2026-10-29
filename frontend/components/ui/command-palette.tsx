@@ -19,6 +19,13 @@ interface CommandPaletteProps {
 }
 
 export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
+  // The inner palette is only mounted while open, so its query/selection
+  // state resets naturally every time the palette is opened.
+  if (!open) return null;
+  return <CommandPaletteInner onClose={onClose} />;
+}
+
+function CommandPaletteInner({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -29,15 +36,11 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   );
 
   useEffect(() => {
-    if (open) {
-      setQuery("");
-      setSelected(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
-  }, [open]);
+    const timer = setTimeout(() => inputRef.current?.focus(), 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
-    if (!open) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
       if (e.key === "ArrowDown") setSelected((s) => Math.min(s + 1, filtered.length - 1));
@@ -49,9 +52,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, filtered, selected, onClose, router]);
-
-  if (!open) return null;
+  }, [filtered, selected, onClose, router]);
 
   return (
     <div

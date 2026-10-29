@@ -2,15 +2,22 @@
 RAG Retriever
 -------------
 Queries ChromaDB to retrieve relevant context for interview question generation.
+
+Use :func:`get_retriever` instead of instantiating :class:`RAGRetriever` at
+import time; the shared instance (ChromaDB client + embedding pool) is only
+created on first use.
 """
 
 from __future__ import annotations
 
 import asyncio
+import threading
 from typing import Any
 
 import chromadb
 from chromadb import Collection
+
+from config import CHROMA_COLLECTION, CHROMA_PATH
 
 from .embeddings import get_embedding_function
 
@@ -20,8 +27,8 @@ class RAGRetriever:
 
     def __init__(
         self,
-        collection_name: str = "intervu_kb_v2",
-        chroma_path: str = "./chroma_db",
+        collection_name: str = CHROMA_COLLECTION,
+        chroma_path: str = CHROMA_PATH,
         n_results: int = 5,
     ) -> None:
         self.client = chromadb.PersistentClient(path=chroma_path)
@@ -80,13 +87,27 @@ class RAGRetriever:
             results["metadatas"][0],
             results["distances"][0],
         ):
-            chunks.append({"text": doc, "metadata": meta, "distance": dist})
+            chunks.append({"text": doc, "metadata": meta or {}, "distance": dist})
 
         return chunks
 
     def format_context(self, chunks: list[dict[str, Any]]) -> str:
         """Format retrieved chunks into a single context string."""
         return "\n\n---\n\n".join(
-            f"[Source: {c['metadata'].get('source', 'unknown')}]\n{c['text']}"
+            f"[Source: {(c.get('metadata') or {}).get('source', 'unknown')}]\n{c['text']}"
             for c in chunks
         )
+
+
+_retriever: RAGRetriever | None = None
+_retriever_lock = threading.Lock()
+
+
+def get_retriever() -> RAGRetriever:
+    """Return the process-wide RAGRetriever, creating it on first use."""
+    global _retriever
+    if _retriever is None:
+        with _retriever_lock:
+            if _retriever is None:
+                _retriever = RAGRetriever()
+    return _retriever

@@ -101,6 +101,7 @@ pydantic-settings==2.14.1
 pydantic_core==2.46.4
 Pygments==2.20.0
 pyparsing==3.3.2
+pypdf==6.21.4
 PyPika==0.51.1
 pyproject_hooks==1.2.0
 python-dateutil==2.9.0.post0
@@ -116,6 +117,7 @@ rpds-py==2026.5.1
 safetensors==0.7.0
 scikit-learn==1.8.0
 scipy==1.17.1
+sentry-sdk==2.73.0
 setuptools==81.0.0
 shellingham==1.5.4
 six==1.17.0

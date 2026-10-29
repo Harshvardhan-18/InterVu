@@ -8,11 +8,13 @@ env/
 *.egg-info/
 dist/
 build/
-tests/
+.pytest_cache/
 
 # Env
 .env
 *.env
+# Temporary file written by `make backend-env` while filling AUTH_SECRET.
+.env.tmp
 
 # ChromaDB
 chroma_db/

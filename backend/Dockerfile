@@ -19,6 +19,9 @@ FROM python:3.11-slim AS runtime
 
 WORKDIR /app
 
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 # Install only runtime system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
@@ -40,4 +43,6 @@ USER appuser
 
 EXPOSE 8000
 
+# 0.0.0.0 is the in-container bind so other compose services can connect.
+# docker-compose.yaml publishes it on 127.0.0.1 only; never publish it wider.
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

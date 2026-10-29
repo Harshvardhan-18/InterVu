@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Zap } from "lucide-react";
-import { api, auth } from "@/lib/api";
+import { api, auth, errorMessage, isApiError } from "@/lib/api";
+
+// The URL does not change while this page is shown, so nothing to subscribe to.
+const subscribeNoop = () => () => {};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,17 +15,31 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ?expired=1 is set by the API client after a 401. Reading window.location
+  // through useSyncExternalStore avoids both a Suspense boundary (needed for
+  // useSearchParams) and a hydration mismatch (server snapshot is false).
+  const sessionExpired = useSyncExternalStore(
+    subscribeNoop,
+    () => new URLSearchParams(window.location.search).has("expired"),
+    () => false,
+  );
+  const notice = sessionExpired ? "Your session expired. Please sign in again." : null;
+
   const handleLogin = async () => {
-    if (!name.trim() || !email.trim()) return;
+    if (!name.trim() || !email.trim() || loading) return;
     setLoading(true);
     setError(null);
     try {
       const result = await api.auth.login({ name: name.trim(), email: email.trim() });
       auth.save(result);
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } catch (e) {
       console.error(e);
-      setError("Something went wrong. Please try again.");
+      setError(
+        isApiError(e) && e.status === 422
+          ? "Please enter your name and a valid email address."
+          : errorMessage(e),
+      );
     } finally {
       setLoading(false);
     }
@@ -57,10 +74,13 @@ export default function LoginPage() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--text-muted)", marginBottom: "6px" }}>
+            <label htmlFor="login-name" style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--text-muted)", marginBottom: "6px" }}>
               Your Name
             </label>
             <input
+              id="login-name"
+              autoComplete="name"
+              maxLength={100}
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="Harsh"
@@ -76,10 +96,13 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--text-muted)", marginBottom: "6px" }}>
+            <label htmlFor="login-email" style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--text-muted)", marginBottom: "6px" }}>
               Email
             </label>
             <input
+              id="login-email"
+              autoComplete="email"
+              maxLength={254}
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="harsh@test.com"
@@ -96,8 +119,12 @@ export default function LoginPage() {
             />
           </div>
 
+          {notice && !error && (
+            <p role="status" style={{ fontSize: "12.5px", color: "#F59E0B" }}>{notice}</p>
+          )}
+
           {error && (
-            <p style={{ fontSize: "12.5px", color: "#EF4444" }}>{error}</p>
+            <p role="alert" style={{ fontSize: "12.5px", color: "#EF4444" }}>{error}</p>
           )}
 
           <button

@@ -3,6 +3,9 @@ FEEDBACK_PROMPT = """You are a senior hiring manager at {company} evaluating a c
 Here is the complete interview transcript with scores:
 {qa_text}
 
+## Security rule
+{untrusted_notice}
+
 Generate a comprehensive post-interview feedback report.
 
 Scoring guide for overall_score (0-100):

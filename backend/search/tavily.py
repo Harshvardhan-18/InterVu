@@ -8,11 +8,14 @@ from __future__ import annotations
 
 import os
 import asyncio
+import logging
 from typing import Any
 from dotenv import load_dotenv
 from tavily import TavilyClient
 from urllib.parse import urlparse
 load_dotenv()  # Load TAVILY_API_KEY from .env file
+
+logger = logging.getLogger(__name__)
 
 class TavilySearch:
     """Wrapper around Tavily API for research queries."""
@@ -82,9 +85,9 @@ class TavilySearch:
                 include_answer=False,
             )
         except Exception as e:
-            print(f"[tavily] Search error for query '{query}': {e}")
+            logger.warning("[tavily] Search error for query '%s': %s", query, e)
             return []
-        print(f"[tavily] Search for query '{query}' returned {len(response.get('results', []))} results")
+        logger.info("[tavily] Search for query '%s' returned %d results", query, len(response.get("results", [])))
         return [
             {
                 "url": r.get("url", ""),
@@ -125,17 +128,17 @@ class TavilySearch:
         seen_urls: set[str] = set()
         results: list[dict[str, Any]] = []
 
-        for (category,queries), search_results in zip(task_meta, all_results):
+        for (category, query), search_results in zip(task_meta, all_results):
             for item in search_results:
-                url=item["url"]
+                url = item["url"]
                 if not url or url in seen_urls:
-                        continue
+                    continue
                 seen_urls.add(url)
-                source=urlparse(url).netloc.replace("www.","")
+                source = urlparse(url).netloc.replace("www.", "")
                 results.append({
                     **item,
                     "category": category,
                     "query": query,
-                    "source":source
+                    "source": source,
                 })
         return results

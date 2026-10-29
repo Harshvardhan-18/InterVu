@@ -81,9 +81,16 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env
 # Edit .env:
-#   - Set DJANGO_SECRET_KEY to any long random string
+#   - Keep DJANGO_DEBUG=True for local development
+#   - DJANGO_SECRET_KEY may stay empty while DJANGO_DEBUG=True (a clearly
+#     labelled dev-only key is used). With DJANGO_DEBUG=False it is REQUIRED
+#     and startup fails without it. Generate one with:
+#       python -c "import secrets; print(secrets.token_urlsafe(50))"
 #   - Leave the INTERVU_DB_* vars commented out for local dev (SQLite is used)
 ```
+
+`DJANGO_DEBUG` defaults to `False`, so a missing `.env` means production-like
+settings (secret key required, secure cookies on).
 
 ### 5. Run Django migrations (Django's own tables only)
 
@@ -117,14 +124,17 @@ python manage.py createsuperuser \
 
 ### 8. Start the development server
 
+Use port 8002 so it does not clash with the FastAPI backend on 8000.
+`runserver` binds to 127.0.0.1 by default; keep it that way.
+
 ```bash
-python manage.py runserver
+python manage.py runserver 8002
 ```
 
 Open:
-- **Admin UI**: http://127.0.0.1:8000/admin/
-- **API root**: http://127.0.0.1:8000/api/
-- **JWT token**: POST http://127.0.0.1:8000/api/token/
+- **Admin UI**: http://127.0.0.1:8002/admin/
+- **API root**: http://127.0.0.1:8002/api/
+- **JWT token**: POST http://127.0.0.1:8002/api/token/
 
 ---
 
@@ -163,7 +173,7 @@ GET /api/interviews/?search=backend
 ### Getting a JWT token
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/token/ \
+curl -X POST http://127.0.0.1:8002/api/token/ \
      -H "Content-Type: application/json" \
      -d '{"username": "admin", "password": "<your-password>"}'
 ```
@@ -171,7 +181,7 @@ curl -X POST http://127.0.0.1:8000/api/token/ \
 Then use the `access` token as a Bearer header:
 
 ```bash
-curl http://127.0.0.1:8000/api/interviews/ \
+curl http://127.0.0.1:8002/api/interviews/ \
      -H "Authorization: Bearer <access_token>"
 ```
 

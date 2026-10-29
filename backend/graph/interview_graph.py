@@ -4,44 +4,46 @@ LangGraph Interview Graph
 Core stateful graph that orchestrates the multi-turn interview:
 
   START
-    │
-    ▼
+    |
+    v
   retrieve_context
-    │
-    ▼
+    |
+    v
   generate_question
-    │
-    ▼
-  wait_for_answer          ← human-in-the-loop node
-    │
-    ▼
+    |
+    v
+  (interrupt: wait for the candidate's answer via the API layer)
+    |
+    v
   evaluate_answer
-    │
-    ▼
-  difficulty_router ───────► adjust_difficulty
-    │
-    ▼
-  generate_followup (optional)
-    │
-    ▼
-  store_result
-    │
-    ▼
-  END or NEXT QUESTION
+    |
+    v
+  difficulty_router -------> adjust_difficulty
+    |                              |
+    v                              v
+  store_result  <------------------
+    |
+    v
+  END or NEXT QUESTION (back to retrieve_context)
 """
 
 from __future__ import annotations
+
+import logging
+import os
 from typing import Any, Literal
+
+from dotenv import load_dotenv
 from typing_extensions import TypedDict
 from langgraph.graph import END, START, StateGraph
-from rag.retriever import RAGRetriever
-from agents.registry import interviewer,evaluator, conductor
-import os
-from dotenv import load_dotenv
-load_dotenv()
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
-_retriever = RAGRetriever()
+from agents.registry import conductor, evaluator
+from rag.retriever import get_retriever
+from utils.difficulty import step_difficulty
+
+load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 # ── State ─────────────────────────────────────────────────────────────────────
@@ -50,17 +52,20 @@ class InterviewState(TypedDict):
     # Session info
     company: str
     role: str
-    difficulty: str  # "easy" | "medium" | "hard"
+    difficulty: str  # "Easy" | "Medium" | "Hard"
     username: str
 
     # Blueprint
     blueprint: dict[str, Any]
 
+    # Optional resume text (opt-in, untrusted); "" when not used.
+    candidate_background: str
+
     # Current turn
     context: str
     current_question: str
     current_question_type: str
-    current_section:str
+    current_section: str
     current_acknowledgment: str
     current_focus_area: str
     current_answer: str
@@ -71,28 +76,43 @@ class InterviewState(TypedDict):
     qa_history: list[dict[str, Any]]
 
     # Control
-    needs_followup: bool
-    followup_question: str | None
     interview_complete: bool
     llm_suggests_wrap_up: bool
+
 
 # ── Helper Function ───────────────────────────────────────────────────────────
 MAX_TOTAL_QUESTIONS = 15
 MIN_QUESTIONS_PER_SECTION = 1
 
+
+def graph_config(interview_id: int) -> dict[str, Any]:
+    """LangGraph thread config: one checkpoint thread per interview session."""
+    return {"configurable": {"thread_id": str(interview_id)}}
+
+
+def _score(evaluation: dict[str, Any] | None, default: float = 5.0) -> float:
+    """Read a numeric score from an evaluation dict, tolerating bad values."""
+    try:
+        return float((evaluation or {}).get("score", default))
+    except (TypeError, ValueError):
+        return default
+
+
 def _sections_covered(blueprint: dict, qa_history: list[dict]) -> set[str]:
     """Which section names have been asked about at least once."""
-    return {entry["section"] for entry in qa_history}
+    return {entry.get("section", "") for entry in qa_history}
+
 
 def _all_sections_covered(blueprint: dict, qa_history: list[dict]) -> bool:
     all_section_names = {s["name"] for s in blueprint.get("sections", [])}
     covered = _sections_covered(blueprint, qa_history)
     return all_section_names.issubset(covered)
 
+
 def _should_end_interview(blueprint: dict, qa_history: list[dict], llm_suggests_wrap_up: bool) -> bool:
     total_asked = len(qa_history)
 
-    # Hard ceiling — always stop regardless of LLM opinion
+    # Hard ceiling: always stop regardless of LLM opinion
     if total_asked >= MAX_TOTAL_QUESTIONS:
         return True
 
@@ -102,24 +122,31 @@ def _should_end_interview(blueprint: dict, qa_history: list[dict], llm_suggests_
         return False
 
     # Once minimum coverage is satisfied, trust the LLM's judgment
-    return llm_suggests_wrap_up
+    return bool(llm_suggests_wrap_up)
 
-# ── Node stubs (wire in real agents when implementing) ─────────────────────────
+
+# ── Nodes ─────────────────────────────────────────────────────────────────────
 
 async def retrieve_context(state: InterviewState) -> dict[str, Any]:
     """Retrieve relevant context from ChromaDB, blending all section focus areas
     weighted toward sections not yet covered."""
     blueprint = state["blueprint"]
-    covered= _sections_covered(blueprint, state["qa_history"])
+    covered = _sections_covered(blueprint, state["qa_history"])
     uncovered_sections = [s for s in blueprint.get("sections", []) if s["name"] not in covered]
 
     target_sections = uncovered_sections or blueprint.get("sections", [])
     focus_areas = [fa for s in target_sections for fa in s.get("focus_areas", [])]
 
     query = f"{state['company']} {state['role']} {' '.join(focus_areas[:8])} interview question"
-    chunks = await _retriever.retrieve(query, company=state["company"], role=state["role"])
-    context = _retriever.format_context(chunks) if chunks else "No relevant context found."
+    try:
+        retriever = get_retriever()
+        chunks = await retriever.retrieve(query, company=state["company"], role=state["role"])
+        context = retriever.format_context(chunks) if chunks else "No relevant context found."
+    except Exception as exc:  # noqa: BLE001 - RAG is best-effort; the interview must go on
+        logger.warning("[graph] Context retrieval failed, continuing without context: %s", exc)
+        context = "No relevant context found."
     return {"context": context}
+
 
 async def generate_question(state: InterviewState) -> dict[str, Any]:
     """Use ConductorAgent to generate the next turn, with full conversation context."""
@@ -131,6 +158,7 @@ async def generate_question(state: InterviewState) -> dict[str, Any]:
         blueprint=state["blueprint"],
         difficulty=state["difficulty"],
         qa_history=state["qa_history"],
+        candidate_background=state.get("candidate_background", ""),
     )
 
     return {
@@ -141,6 +169,7 @@ async def generate_question(state: InterviewState) -> dict[str, Any]:
         "current_acknowledgment": result.get("acknowledgment", ""),
         "llm_suggests_wrap_up": result.get("suggests_wrap_up", False)
     }
+
 
 async def evaluate_answer(state: InterviewState) -> dict[str, Any]:
     """Use EvaluatorAgent to score the answer."""
@@ -159,23 +188,16 @@ async def evaluate_answer(state: InterviewState) -> dict[str, Any]:
 
 def difficulty_router(state: InterviewState) -> Literal["adjust", "store"]:
     """Route to difficulty adjustment only if the score is very off."""
-    score = state["evaluation"].get("score", 5.0)
+    score = _score(state.get("evaluation"))
     if score >= 8.5 or score <= 4.0:
         return "adjust"
     return "store"
 
 
 async def adjust_difficulty(state: InterviewState) -> dict[str, Any]:
-    """Adjust difficulty level based on router output."""
-    score = state["evaluation"].get("score", 5.0)
-    current = state["difficulty"].lower()
-    if score >= 8.5 and current != "hard":
-        new_difficulty = "Hard" if current == "medium" else "Medium"
-    elif score <= 4.0 and current != "easy":
-        new_difficulty = "Easy" if current == "medium" else "Medium"
-    else:
-        new_difficulty = state["difficulty"]
-    return {"difficulty": new_difficulty}
+    """Move difficulty one level up or down based on the latest score."""
+    return {"difficulty": step_difficulty(state.get("difficulty"), _score(state.get("evaluation")))}
+
 
 async def store_result(state: InterviewState) -> dict[str, Any]:
     """Persist Q&A + evaluation and advance section/question counters."""
@@ -218,12 +240,11 @@ def build_interview_graph() -> StateGraph:
     graph.add_node("generate_question", generate_question)
     graph.add_node("evaluate_answer", evaluate_answer)
     graph.add_node("adjust_difficulty", adjust_difficulty)
-    # graph.add_node("generate_followup", generate_followup)    
     graph.add_node("store_result", store_result)
 
     graph.add_edge(START, "retrieve_context")
     graph.add_edge("retrieve_context", "generate_question")
-    # "wait_for_answer" is handled externally via the API layer
+    # Waiting for the answer is handled externally via the API layer (interrupt_after).
     graph.add_edge("generate_question", "evaluate_answer")
 
     graph.add_conditional_edges(
@@ -247,11 +268,10 @@ def build_interview_graph() -> StateGraph:
 
     return graph
 
-from psycopg_pool import AsyncConnectionPool
-from psycopg.rows import dict_row
 
-_pool: AsyncConnectionPool | None = None
+_pool: Any = None
 compiled_graph: Any = None
+
 
 async def init_graph():
     """
@@ -260,6 +280,11 @@ async def init_graph():
     server restarts, and compiles the graph.
     """
     global _pool, compiled_graph
+
+    # Imported lazily so importing this module never needs a database driver.
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+    from psycopg.rows import dict_row
+    from psycopg_pool import AsyncConnectionPool
 
     conn_string = os.getenv("DATABASE_URL_PSYCOPG")
     if not conn_string:
@@ -282,19 +307,27 @@ async def init_graph():
         checkpointer=checkpointer,
         interrupt_after=["generate_question"]
     )
-    print("[graph] Interview graph initialized and compiled with Postgres checkpointer pool.")
+    logger.info("[graph] Interview graph initialized and compiled with Postgres checkpointer pool.")
     return compiled_graph
-    
-    
+
+
 async def close_graph():
     """
     Call once at FastAPI shutdown (in the lifespan handler).
     Closes the Postgres-backed checkpointer pool.
     """
-    global _pool
+    global _pool, compiled_graph
     if _pool:
         await _pool.close()
-        print("[graph] Interview graph checkpointer pool closed.")
+        _pool = None
+        logger.info("[graph] Interview graph checkpointer pool closed.")
+    compiled_graph = None
+
+
+def is_graph_ready() -> bool:
+    """True once init_graph() has compiled the graph."""
+    return compiled_graph is not None
+
 
 def get_compiled_graph():
     """

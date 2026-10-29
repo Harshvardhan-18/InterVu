@@ -1,33 +1,33 @@
 # backend/utils/groq_pool.py
 
-import os
 import itertools
+import logging
 import threading
+
 from langchain_groq import ChatGroq
-from dotenv import load_dotenv
-load_dotenv()
+
+from config import groq_api_keys
+
+logger = logging.getLogger(__name__)
 
 
 class GroqKeyPool:
     """Round-robin key rotation across multiple Groq API keys."""
 
     def __init__(self, model: str) -> None:
-        keys = [v for k, v in sorted(os.environ.items()) if k.startswith("GROQ_API_KEY_")]
-        
-        if not keys:
-            # fallback to single key
-            single = os.getenv("GROQ_API_KEY")
-            if single:
-                keys = [single]
-        
-        if not keys:
-            raise ValueError("No Groq API keys found. Set GROQ_API_KEY_1 and GROQ_API_KEY_2 in .env")
+        # GROQ_API_KEY_1, GROQ_API_KEY_2, ... (numeric order), falling back to GROQ_API_KEY.
+        keys = groq_api_keys()
 
-        self._clients = [ChatGroq(model=model,api_key=k) for k in keys]
-        self._cycle   = itertools.cycle(self._clients)
-        self._lock    = threading.Lock()
+        if not keys:
+            raise ValueError(
+                "No Groq API keys found. Set GROQ_API_KEY, or GROQ_API_KEY_1 and GROQ_API_KEY_2, in backend/.env"
+            )
 
-        print(f"[GroqKeyPool] {len(keys)} key(s) loaded for '{model}'")
+        self._clients = [ChatGroq(model=model, api_key=k) for k in keys]
+        self._cycle = itertools.cycle(self._clients)
+        self._lock = threading.Lock()
+
+        logger.info("[GroqKeyPool] %d key(s) loaded for '%s'", len(keys), model)
 
     def get(self) -> ChatGroq:
         """Returns next client in round-robin order. Thread-safe."""

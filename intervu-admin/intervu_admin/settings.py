@@ -15,13 +15,16 @@ Key design decisions
 • The 'analytics' app's unmanaged (read-only) models are routed to the
   'intervu' connection via analytics/routers.py.
 
-• DEBUG defaults to True for local development. Set DJANGO_DEBUG=False in
-  production.
+• DEBUG defaults to False. Set DJANGO_DEBUG=True for local development.
+  With DEBUG off, DJANGO_SECRET_KEY is mandatory (ImproperlyConfigured is
+  raised when it is missing); a clearly labelled insecure key is used only
+  when DEBUG is on.
 """
 
 from pathlib import Path
 
 from decouple import Csv, config
+from django.core.exceptions import ImproperlyConfigured
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -30,9 +33,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ── Core ───────────────────────────────────────────────────────────────────────
 
-SECRET_KEY = config("DJANGO_SECRET_KEY", default="dev-insecure-secret-key-change-me")
+DEBUG = config("DJANGO_DEBUG", default=False, cast=bool)
 
-DEBUG = config("DJANGO_DEBUG", default=True, cast=bool)
+# Development-only fallback. Never used when DEBUG is False.
+_DEV_ONLY_INSECURE_SECRET_KEY = "dev-only-insecure-secret-key-do-not-use-in-production"
+
+SECRET_KEY = config("DJANGO_SECRET_KEY", default="").strip()
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is False. "
+            "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(50))\""
+        )
+    SECRET_KEY = _DEV_ONLY_INSECURE_SECRET_KEY
 
 ALLOWED_HOSTS = config(
     "DJANGO_ALLOWED_HOSTS",
@@ -193,9 +206,20 @@ REST_FRAMEWORK = {
 }
 
 
-# ── CORS (restrict to localhost in development) ────────────────────────────────
+# ── CORS (localhost by default; comma-separated override via env) ──────────────
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+CORS_ALLOWED_ORIGINS = config(
+    "DJANGO_CORS_ALLOWED_ORIGINS",
+    default="http://localhost:3000,http://127.0.0.1:3000",
+    cast=Csv(),
+)
+
+
+# ── Cookies ────────────────────────────────────────────────────────────────────
+# Secure (HTTPS-only) cookies by default whenever DEBUG is off. Set
+# DJANGO_SECURE_COOKIES=False only for a non-DEBUG run over plain HTTP on localhost.
+
+_SECURE_COOKIES = config("DJANGO_SECURE_COOKIES", default=not DEBUG, cast=bool)
+SESSION_COOKIE_SECURE = _SECURE_COOKIES
+CSRF_COOKIE_SECURE = _SECURE_COOKIES
+SESSION_COOKIE_HTTPONLY = True

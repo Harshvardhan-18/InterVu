@@ -6,18 +6,21 @@ interview plan stored in PostgreSQL.
 """
 
 from __future__ import annotations
-from config import BlueprintModel as model
-from typing import Any
-from pydantic import ValidationError
-from schemas.blueprint import Blueprint, BlueprintSection
-from langchain_groq import ChatGroq
-import json
-from prompts.blueprint import BLUEPRINT_PROMPT
-import asyncio
-import os
+
+import copy
+import logging
 import re
-from dotenv import load_dotenv
-load_dotenv()
+from typing import Any
+
+from langchain_groq import ChatGroq
+
+from config import AGENT_GROQ_KEY_SLOT, BlueprintModel as model, groq_api_key
+from prompts.blueprint import BLUEPRINT_PROMPT
+from schemas.blueprint import Blueprint
+from utils.difficulty import normalize_difficulty
+from utils.llm_json import invoke_llm_json
+
+logger = logging.getLogger(__name__)
 
 SECTION_NAME_ORDER_PATTERNS: list[tuple[int, list[str]]] = [
     (0, ["screening", "screening call", "screening round", "fitment"]),
@@ -85,11 +88,13 @@ class BlueprintGenerator:
     """Generates a structured interview blueprint from extracted knowledge."""
 
     def __init__(self, model: str = model) -> None:
-        self.llm = ChatGroq(model=model,api_key=os.getenv("GROQ_API_KEY_2"))
-    
-    def _fallback(self,difficulty:str)->dict[str,Any]:
-        sections= SECTION_DEFAULTS.get(difficulty, SECTION_DEFAULTS["medium"])
-        return {"sections":sort_sections(sections)}
+        self.llm = ChatGroq(model=model, api_key=groq_api_key(AGENT_GROQ_KEY_SLOT))
+
+    def _fallback(self, difficulty: str) -> dict[str, Any]:
+        sections = SECTION_DEFAULTS.get(difficulty.lower(), SECTION_DEFAULTS["medium"])
+        # Deep copy so callers can never mutate the shared defaults.
+        # ``fallback`` tells the API this is the generic plan, not an AI-made one.
+        return {"sections": sort_sections(copy.deepcopy(sections)), "fallback": True}
     
     async def generate(
         self,
@@ -116,33 +121,27 @@ class BlueprintGenerator:
         Returns:
             Blueprint dict with sections,types, question counts and focus areas.
         """
-        difficulty = difficulty.lower()
+        difficulty = normalize_difficulty(difficulty).lower()
 
         prompt = BLUEPRINT_PROMPT.format(
             company=company,
             role=role,
-            skills=", ".join(skills),
-            topics=", ".join(topics),      
-            rounds=", ".join(rounds),
-            dsa_questions=", ".join(dsa_questions),
+            skills=", ".join(skills or []),
+            topics=", ".join(topics or []),
+            rounds=", ".join(rounds or []),
+            dsa_questions=", ".join(dsa_questions or []),
             difficulty=difficulty
         )
-        try:
-            response = await self.llm.ainvoke(prompt)
-            raw = response.content.strip()
-            start=raw.find("{")
-            end=raw.rfind("}")
-            if start == -1 or end == -1:
-                raise ValueError(f"No JSON found in response:\n{raw[:500]}")
-            data = json.loads(raw[start:end+1])
-            validated = Blueprint(**data)  # Validate structure with Pydantic
-            result = validated.model_dump()
-            result["sections"] = sort_sections(result.get("sections", []))
+
+        def _validate(data: dict[str, Any]) -> dict[str, Any]:
+            result = Blueprint(**data).model_dump()
+            if not result.get("sections"):
+                raise ValueError("Blueprint has no sections")
+            result["sections"] = sort_sections(result["sections"])
             return result
-        except (ValidationError, json.JSONDecodeError, ValueError) as e:
-            print(f"[blueprint] Error generating blueprint: {e}")
-            return self._fallback(difficulty)
-        except Exception as e:
-            # Fallback to defaults
-            print(f"[blueprint] Unexpected error during blueprint generation, using fallback: {e}")
+
+        try:
+            return await invoke_llm_json(self.llm, prompt, validate=_validate, label="blueprint")
+        except Exception as exc:  # noqa: BLE001 - always return a usable blueprint
+            logger.warning("[blueprint] Blueprint generation failed, using defaults: %s", exc)
             return self._fallback(difficulty)
