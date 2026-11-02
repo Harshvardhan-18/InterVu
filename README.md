@@ -29,7 +29,7 @@ An AI-powered mock interview platform. Pick a company and a role: InterVu resear
 - Scores every answer on correctness, depth, communication and problem solving, and adapts the difficulty as you go.
 - Live progress: the new-interview screen shows the real pipeline stage, and your score appears as soon as it exists, before the next question is ready.
 - Coding questions have a built-in code editor. JavaScript runs safely in your browser; other languages are reviewed by the AI.
-- Optional voice: read questions aloud and dictate answers (off by default).
+- **Voice call:** take the whole interview as a hands-free phone call with the AI interviewer. It speaks each question, listens, and sends your answer when you pause. You can also just read questions aloud or dictate answers while typing (both off by default).
 - Optional resume: upload a PDF, DOCX or .txt resume and let the interviewer ask about your own projects.
 - Interviews survive server restarts and can be resumed from the dashboard.
 
@@ -58,7 +58,7 @@ This guide gets InterVu running on your own machine from a fresh clone. It was r
 | Requirement | Version | Notes |
 |-------------|---------|-------|
 | Python | 3.11 | Other versions are not tested. |
-| Node.js | **20.9 or newer** | Next.js 16 refuses to build on older Node (the error says `>=20.9.0`). Check with `node -v`. |
+| Node.js | **20.19 or newer** (22 works too) | Next.js 16 refuses to build on Node older than 20.9, and the test runner needs 20.19. Check with `node -v`. |
 | PostgreSQL | 16 or 17 (both tested; 17 is used in Docker and CI) | Easiest through Docker, but any Postgres you already have works. |
 | Docker | optional | Only used to run Postgres (and, optionally, the whole stack). |
 | git | any | |
@@ -156,6 +156,7 @@ Open **http://127.0.0.1:3000** (or `http://localhost:3000`).
 2. Optional: open **Resume** in the sidebar and upload a text-based PDF, DOCX or .txt resume.
 3. Click **New Interview**, pick a company and role, choose a difficulty and start. The first run for a company researches the web, so allow a minute or two; you will see the real stages go by. Later interviews for the same company and role start much faster because the research is cached.
 4. Answer the questions. On a coding question press the `</>` button to open the code editor, press **Run** (JavaScript only) and **Add to my answer**. The speaker and microphone buttons turn on read-aloud and dictation.
+   **Prefer a phone call?** Tick "Take this interview as a voice call" on the last step of the new-interview screen, or press **Voice call** at the top of any interview. Allow the microphone when the browser asks, press **Start call**, and talk. It needs Chrome or Edge on desktop; other browsers show the option disabled.
 5. When the interview ends you land on your **report**. From there you can download it, print it or create a share link.
 6. The **Dashboard** shows your history, score trend, weakest sections and AI usage.
 
@@ -177,7 +178,7 @@ pip install -r backend/requirements.txt   # new dependencies, if any
 
 ```bash
 make help        # every command with a description
-make test        # backend test suite (no keys or database needed)
+make test        # backend and frontend unit tests (no keys or database needed)
 make lint        # byte-compile, ESLint, production build, type check, Django check
 make migrate     # apply database migrations by hand
 ```
@@ -258,7 +259,20 @@ WHERE skills::text = '[]' AND topics::text = '[]' AND rounds::text = '[]';
 
 **Code editor.** Coding questions have a small editor. JavaScript can be run in your browser inside a locked-down sandbox (see [Running code safely](#running-code-safely)); other languages are submitted as text for the AI to review and are never executed. Output you include is labelled "self-reported", and the evaluator is told to judge the code, not the claim that it works.
 
-**Voice (optional, off by default).** Read questions aloud and dictate answers using your browser's speech features. Dictation is done by the browser's speech service, which in Chrome means the audio is sent to Google; InterVu never receives audio.
+**Voice call (optional).** Tick "Take this interview as a voice call" when you start (or press **Voice call** on any interview) and the interview works like a phone call:
+
+1. The interviewer **speaks** the question; your microphone is closed while it talks, so it never hears itself.
+2. Your microphone opens and your words appear live as captions.
+3. When you **pause** for a moment (1.5, 2.5, 4 or 6 seconds, your choice) a countdown shows and your answer is sent automatically. Keep talking to add more, or press **Send now**.
+4. The interviewer thinks, then speaks the next question. At the end it says a closing line and opens your report.
+
+During the call you can **mute**, **skip** the interviewer to answer straight away, **repeat** the question (say "could you repeat that?" or press the button), **switch to typing** or **end the call**. If it is quiet for 20 seconds the interviewer says "take your time" once, and after 90 seconds the call pauses rather than sending nothing. Coding questions invite you to talk through your approach out loud, with a shortcut to the code editor.
+
+A voice call also changes how the AI works: questions are written for the ear (short sentences, no markdown or code blocks, numbers and symbols in words), scores are never read out, and the evaluator is told your answer is a speech transcript, so missing punctuation or a misheard word is not held against you.
+
+Everything runs through your browser's own speech features, so nothing new is sent anywhere: InterVu only ever receives the *text* of your answers. In Chrome, speech recognition is performed by Google's speech service, so what you say is processed by Google; the call screen says this before you start. Voice calls need speech recognition and speech output, which Chrome and Edge on desktop provide.
+
+**Reading questions aloud and dictating (optional, off by default).** Without a call you can still turn on read-aloud (speaker button) and dictation (microphone button) next to the answer box and keep typing and sending yourself.
 
 **Resume (optional).** Upload a PDF, DOCX or .txt resume on the Resume page. Only the extracted text is stored, and it is used only for interviews where you tick "Tailor questions to my resume". In that case the text is sent to the AI provider (Groq) for that interview.
 
@@ -404,7 +418,7 @@ Base URL `http://localhost:8000`. Interactive docs at `/docs`. Every endpoint ex
 | `GET` | `/api/interviews?limit=&offset=` | Your interviews, newest first, with `difficulty`, `status` and report `score` (null until a real report exists; placeholder reports have no score). `limit` 1-100, default 50. |
 | `POST` | `/api/interviews/start` | `{username, company, role, difficulty?}`. Runs research (or uses the cache), builds the blueprint and returns the first question. `difficulty` is `Easy`, `Medium`, `Hard`, or omitted/`auto` for the researched value. Rate limited per user (429). |
 | `GET` | `/api/interviews/{id}` | Interview state and full Q&A history (used to resume). |
-| `POST` | `/api/interviews/{id}/answer` | `{answer}`. Returns the evaluation and the next question, or `interview_complete: true` and `report_ready` (false when the report failed or is only a placeholder). 409 while another answer for the same interview is still being processed. |
+| `POST` | `/api/interviews/{id}/answer` | `{answer, voice_mode?}`. `voice_mode: true` or `false` changes how the following questions are written (for the ear, or normal); leave it out to keep the current setting. Returns the evaluation and the next question, or `interview_complete: true` and `report_ready` (false when the report failed or is only a placeholder). 409 while another answer for the same interview is still being processed. |
 | `POST` | `/api/interviews/{id}/complete` | Mark completed and generate the report. Idempotent once a real report exists. 400 when nothing was answered. |
 | `POST` | `/api/interviews/{id}/end` | End early and generate a report from the answers so far. Idempotent once completed with a real report. 400 when nothing was answered. |
 | `GET` | `/api/reports/{id}` | The feedback report. Generated on the fly for completed interviews that have no report yet or only a placeholder (`report.fallback: true`, `overall_score: null`). |
@@ -417,7 +431,7 @@ Base URL `http://localhost:8000`. Interactive docs at `/docs`. Every endpoint ex
 | `POST` / `GET` / `DELETE` | `/api/reports/{id}/share` | Create (or return the active) public link `{expires_in_days?}`, read its status, or revoke it. Only finished interviews with a real report can be shared (409 otherwise). |
 | `GET` | `/api/shared/{token}` | **Public, no sign-in.** The read-only shared report. See below. |
 
-`POST /api/interviews/start` also accepts `use_resume: true` (400 if no resume is stored) and `refresh_research: true` to bypass the research cache, and returns `degraded` and `warnings` (what could not be done, for example live research unavailable). It returns **503** when both research and the AI planner are down.
+`POST /api/interviews/start` also accepts `voice_mode: true` (write the questions for a voice call), `use_resume: true` (400 if no resume is stored) and `refresh_research: true` to bypass the research cache, and returns `degraded` and `warnings` (what could not be done, for example live research unavailable). It returns **503** when both research and the AI planner are down.
 
 ### Sharing a report
 
@@ -479,6 +493,7 @@ The admin panel uses Django's own authentication (session cookies plus SimpleJWT
 
 ```bash
 cd backend && python -m pytest -q            # or: make test
+cd frontend && npm test                      # unit tests (vitest)
 cd frontend && npm run lint && npm run build && npx tsc --noEmit
 cd intervu-admin && DJANGO_DEBUG=True python manage.py check
 make lint                                    # all of the static checks above
@@ -486,13 +501,15 @@ make lint                                    # all of the static checks above
 
 The backend suite (`backend/tests`) mocks every LLM, search API, the LangGraph graph and the database, so it needs no API keys or running services (`tests/conftest.py` sets `ENV=test`). It covers token signing and expiry, `ENV` fail-closed behaviour, JSON extraction, difficulty handling, graph helpers, ownership checks, natural completion creating a report, lazy report generation, fallback-report regeneration, idempotent completion, the empty-history guards, rate limiting, CORS origins and CORS headers on 500 responses, `DB_SSL` modes, research-profile caching and `/ready`, plus token accounting and limits, resume parsing (real PDF and DOCX files, encrypted, corrupt and zip-bomb inputs), the streaming endpoints, Sentry scrubbing and migration hygiene.
 
-The streaming, resume, code-sandbox, voice and usage features were additionally exercised end to end in a real browser and over real HTTP against Postgres, with a deterministic stand-in for the AI model. Those browser checks are not committed (no browser-test framework is part of the project yet); the speech APIs were mocked because a headless browser has no microphone.
+The frontend unit tests (`frontend/lib/*.test.ts`, vitest) cover the logic that decides what the voice call says and when (splitting text for speech, spoken "repeat that" commands, transcript joining, voice choice), the code-answer composer, and the streaming client (events split across network chunks, error events, closed streams, 401 handling, `voice_mode` in requests).
+
+The streaming, resume, code-sandbox, voice-call and usage features were additionally exercised end to end in a real browser and over real HTTP against Postgres, with a deterministic stand-in for the AI model. For the voice call the browser's speech APIs were replaced by scripted ones (a headless browser has no microphone or voices): the checks cover the whole hands-free loop, muting, skipping, repeat commands, recognition restarts, a blocked microphone, failed sends and retries, silence nudges and auto-pause (with a controlled clock), saved settings, an unsupported browser, a phone-sized screen, reduced motion, and finishing a full interview by voice. Those browser checks are not committed (no browser-test framework is part of the project yet), so real microphones, real voices and real recognition accuracy have not been tested.
 
 GitHub Actions (`.github/workflows/ci.yml`, read-only `contents` permission) runs four jobs on every push to `main` and every pull request:
 
 - **backend**: Python 3.11, install requirements, byte-compile, `pytest`.
 - **migrations**: an empty Postgres 17 service (loopback only, per-run password), `alembic upgrade head`, `alembic check`, then downgrade and upgrade again.
-- **frontend**: Node 20 (Next.js 16 needs 20.9+), `npm ci`, lint, build, `tsc --noEmit`.
+- **frontend**: Node 20, `npm ci`, unit tests, lint, build, `tsc --noEmit`.
 - **admin**: install requirements, `manage.py check` with `DJANGO_DEBUG=False`.
 
 ---
@@ -525,9 +542,9 @@ InterVu/
 │   ├── app/login/            Sign-in page
 │   ├── app/(protected)/      Auth-guarded pages: dashboard, interview/new, interview/[id], report/[id], resume
 │   ├── app/shared/[token]/   Public read-only shared report
-│   ├── components/           Layout and UI components
-│   ├── lib/                  api.ts (typed client, SSE streaming, uploads), sandbox.ts (isolated JS runner), speech.ts, code-answer.ts
-│   ├── hooks/                useAuth (session guard), useVoice (optional read-aloud and dictation)
+│   ├── components/           Layout and UI components; voice/ holds the full-screen call
+│   ├── lib/                  api.ts (typed client, SSE streaming, uploads), sandbox.ts (isolated JS runner), speech.ts, voice-call.ts (pure call logic), code-answer.ts; *.test.ts are the unit tests
+│   ├── hooks/                useAuth (session guard), useVoice (read-aloud and dictation), useVoiceCall (hands-free call controller)
 │   └── Dockerfile
 ├── intervu-admin/            Read-only Django admin + REST API (separate venv)
 ├── .github/workflows/ci.yml  CI pipeline
@@ -541,7 +558,7 @@ InterVu/
 
 ## Troubleshooting
 
-**`You are using Node.js 18... Node.js version ">=20.9.0" is required`.** Upgrade Node to 20.9 or newer (for example `brew install node@22`, then put `/opt/homebrew/opt/node@22/bin` first on your `PATH`, or use `nvm install 22`). Open a new terminal and check `node -v`.
+**`You are using Node.js 18... Node.js version ">=20.9.0" is required`.** Upgrade Node to 20.9 or newer (Node 20.19 or newer; for example `brew install node@22`, then put `/opt/homebrew/opt/node@22/bin` first on your `PATH`, or use `nvm install 22`). Open a new terminal and check `node -v`.
 
 **`ModuleNotFoundError` (for example `pypdf` or `sentry_sdk`) after pulling.** New dependencies were added. Run `pip install -r backend/requirements.txt` again inside the backend virtualenv.
 
@@ -556,6 +573,16 @@ InterVu/
 **"Daily AI usage limit reached" (HTTP 429).** `DAILY_TOKEN_LIMIT` is set and used up; it resets at 00:00 UTC. Raise it or set it to `0`.
 
 **The editor's Run button is disabled.** Only JavaScript runs, and only in your browser. Other languages are sent to the AI as text and never executed.
+
+**"Voice call" is greyed out, or the call says the browser is not supported.** Voice calls need both speech recognition and speech output. Use Chrome or Edge on desktop; Firefox does not provide speech recognition, and some mobile browsers lack it. You can always type instead.
+
+**"Microphone access is blocked."** Allow the microphone for this site (the padlock or tune icon in the address bar), then press Try again. The call screen offers "Switch to typing" if you would rather not.
+
+**The interviewer cannot be heard.** Check your system volume and the voice picker in the call settings (the gear icon). Voices depend on what your operating system has installed. If speech stops partway, press Repeat.
+
+**The call keeps sending my answer too early, or waits too long.** Change "Pause before sending" in the call settings (1.5 to 6 seconds). Pressing **Send now** sends immediately, and muting stops anything being sent.
+
+**"Speech recognition keeps stopping."** The browser's speech service ended the session several times in a row, often a network problem. Check your connection and try again, or switch to typing.
 
 **No speaker or microphone buttons.** Your browser does not offer that Web Speech feature. Chromium-based browsers such as Chrome and Edge support dictation; others may not. Both are optional.
 
@@ -592,4 +619,5 @@ InterVu/
 - Run languages other than JavaScript, for example Python in the browser via WebAssembly, behind the same isolation.
 - Frontend error monitoring (the Sentry integration covers the backend only).
 - Commit the browser end-to-end checks as a Playwright suite.
+- A more natural interviewer voice (cloud text-to-speech) and speech recognition that works in every browser; both would send audio to a provider and so need an explicit opt-in.
 - Settings page (shown as "Soon" in the sidebar).
