@@ -8,6 +8,7 @@ An AI-powered mock interview platform. Pick a company and a role: InterVu resear
 
 - [Features](#features)
 - [Run it locally](#run-it-locally)
+- [What's new and how to test it](#whats-new-and-how-to-test-it)
 - [How it works](#how-it-works)
 - [Architecture](#architecture)
 - [Environment variables](#environment-variables)
@@ -238,6 +239,83 @@ UPDATE reports SET overall_score = NULL WHERE report_json->>'fallback' = 'true';
 DELETE FROM research_profiles
 WHERE skills::text = '[]' AND topics::text = '[]' AND rounds::text = '[]';
 ```
+
+---
+
+## What's new and how to test it
+
+### What was added
+
+Compared with the original project, this version adds:
+
+| Area | What you get |
+|------|--------------|
+| **Voice call** | Take the whole interview as a hands-free phone call with the AI interviewer: it speaks, listens, and sends your answer when you pause. Mute, skip, repeat, switch to typing, adjustable pause, voice and speed. ([details](#how-it-works)) |
+| **Live progress** | The new-interview screen shows what the server is really doing, and your score appears the moment it exists, before the next question. |
+| **Code editor** | Write code in the answer box and run JavaScript safely in your browser ([how it is isolated](#running-code-safely)). |
+| **Resume** | Upload a PDF, DOCX or .txt resume and let the interviewer ask about your own projects (opt-in). |
+| **Reports you can share** | An expiring, revocable public link that never shows your name, email or answers ([what it exposes](#sharing-a-report)). |
+| **Progress and usage** | Dashboard score trend, weakest sections, "practice next" list, and AI token usage with an optional daily limit. |
+| **Honest failures** | If research or the AI planner is down you are told; if both are, you get a clear error instead of a fake interview. |
+| **Security** | Sign-in tokens with per-user ownership checks, rate limits, prompt-injection hardening, and a patched Next.js (the originally pinned version had critical advisories). |
+| **Operations** | Alembic database migrations, optional Sentry monitoring with personal data stripped, Docker and a Makefile, GitHub Actions CI. |
+| **Tests** | Over 300 backend tests and about 60 frontend unit tests. |
+
+### Run the automated tests
+
+No API keys and no database are needed. Run `make setup` once first to install everything:
+
+```bash
+make test                                # backend (pytest) and frontend (vitest) unit tests
+make lint                                # byte-compile, ESLint, production build, type check, Django check
+cd backend && python -m alembic check    # models and migrations agree (needs DATABASE_URL to point at a database)
+```
+
+All of these should finish without failures (`make lint` needs the admin virtualenv that `make setup` creates). The same checks run on every pull request in GitHub Actions.
+
+### Try the features yourself
+
+This needs the app running with **real API keys** (see [Run it locally](#run-it-locally)), because the interview itself is AI-driven. Sign in, then:
+
+| Feature | How to try it | What you should see |
+|---------|---------------|---------------------|
+| **Live progress** | Start an interview for a company you have not used before. | The four steps (*Researching company & role*, *Extracting interview patterns*, *Building RAG knowledge base*, *Generating interview blueprint*) tick off one by one as the server works. Starting the same company again skips straight to the blueprint step. |
+| **Score before the next question** | Answer any question. | The indicator reads *Evaluating*, then *Scored 6.4/10. Preparing your next question* (your own score), then the next question appears. |
+| **Code editor** | On any question press the `</>` button. Paste `console.log([1, 2, 3].reduce((a, b) => a + b, 0))` and press **Run**. | The output shows `6`. **Add to my answer** inserts a fenced code block followed by *Output when I ran it (self-reported)*. |
+| **Sandbox safety** | Run `while (true) {}`. Then run `fetch('http://127.0.0.1:8000/health').then(() => console.log('NETWORK-OK')).catch((e) => console.log('blocked:' + e.name))`. | The loop stops with *Stopped after 3s* and the page stays responsive. The second snippet prints `blocked:` and never `NETWORK-OK`. |
+| **Resume** | Open **Resume**, upload a text-based PDF, DOCX or .txt, then tick *Tailor questions to my resume* when you start an interview. Also try uploading a PNG. | The resume text is previewed; the interviewer refers to something on your resume; the PNG is refused with *Unsupported file*. **Delete** removes it. |
+| **Share a report** | Finish an interview, open the report, press **Create link** in *Share this report*, and open the link in a private window (not signed in). | The report shows without your name, email or answers. **Stop sharing** makes the same link say it is not available. |
+| **Dashboard** | Finish two or more interviews. | A score trend, *Where to focus* (weakest sections, topics to practise) and an *AI usage* card with today's and all-time tokens. |
+| **Daily limit** | Set `DAILY_TOKEN_LIMIT=1000` in `backend/.env`, restart the backend and start two interviews. | The second is refused with *Daily AI usage limit reached*; it resets at 00:00 UTC. Set it back to `0` afterwards. |
+| **Failure handling** | Put a nonsense value in `TAVILY_API_KEY` and `GROQ_API_KEY`, restart, and start an interview. | A clear *research and AI services are unavailable* error (HTTP 503), not a generic interview. |
+| **Migrations** | `make migrate` | `Running upgrade -> 0001, baseline schema` the first time and nothing after that. |
+| **Sentry** | Set `SENTRY_DSN` to a test project and cause an error. | The error appears with no answers, resumes, request bodies, cookies or tokens attached. |
+
+### Test the voice call
+
+You need **Chrome or Edge on desktop**, a working microphone and real API keys. Headphones are recommended so the interviewer's voice does not reach your microphone. Work through these in order:
+
+1. **Start from the new-interview screen.** On the last step tick *Take this interview as a voice call* (it is unticked by default and says plainly that Chrome's speech recognition is processed by Google). Start the interview. You should land on a *Ready when you are* screen and hear nothing yet.
+2. **Start the call.** Press **Start call** and allow the microphone when the browser asks. The interviewer speaks the first question while the status reads *Interviewer is speaking*.
+3. **Answer by voice.** When the status changes to *Listening*, answer out loud. Your words appear live under *You*. Stop talking: a bar counts down, the status becomes *Thinking about your answer*, and the next question is spoken. You never touch the keyboard.
+4. **Keep talking to add more.** Say something, pause for a second, then continue before the bar runs out. The bar restarts and everything is sent together. **Send now** sends immediately.
+5. **Skip the interviewer.** While it is speaking press **Answer now**: it stops mid-sentence and the microphone opens.
+6. **Repeat.** Say *"could you repeat the question please"*, or press **Repeat**. The question is spoken again and nothing is sent as an answer.
+7. **Mute.** Say a sentence and press **Mute** before the bar runs out: nothing is sent. Press **Unmute** and the held answer is sent.
+8. **Silence.** Say nothing for 20 seconds: the interviewer says *"Take your time. I'm listening."* once. After 90 seconds of silence the call shows *Call paused*; press the microphone to continue.
+9. **Settings.** Open the gear icon and change *Pause before sending*, *Interviewer voice* and *Speaking speed*. They apply at once and are remembered next time.
+10. **Type instead.** Press **Type instead**: the call closes and anything you had said is in the answer box.
+11. **Blocked microphone.** Set the site's microphone to *Block* in the browser, start a call, and you should get *Microphone access is blocked* with **Switch to typing**.
+12. **Finish by voice.** Answer until the interview ends: the interviewer says a closing line (*"Thank you, that's everything I wanted to ask..."*) and the report opens.
+
+While you do this, judge the parts a machine cannot:
+
+- Are the questions short and easy to follow by ear (no lists, no symbols read out)?
+- Does the interviewer ever read a score out loud? It should not.
+- Does it send your answer too early or too late? Adjust *Pause before sending*.
+- Is a technical term misheard? The transcript is shown, and the evaluator is told it came from speech.
+
+On other browsers (for example Firefox) the *Voice call* button is disabled with a tooltip and the new-interview option is greyed out; typing still works everywhere. If something goes wrong, see [Troubleshooting](#troubleshooting), and when reporting a problem include your browser and version and any red errors from the browser console.
 
 ---
 
