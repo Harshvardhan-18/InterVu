@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
-  Zap, ChevronRight, CheckCircle2, Send, Code2, Mic, MicOff, Volume2, VolumeX,
+  Zap, ChevronRight, CheckCircle2, Send, Code2, Mic, MicOff, Volume2, VolumeX, Phone,
   ArrowRight, BarChart3, LogOut, AlertTriangle, RotateCcw,
 } from "lucide-react";
 import {
@@ -13,7 +13,10 @@ import {
 } from "@/lib/api";
 import NoticeBanner from "@/components/ui/notice-banner";
 import CodeEditor from "@/components/ui/code-editor";
+import VoiceCallOverlay from "@/components/voice/voice-call-overlay";
 import { useVoice } from "@/hooks/useVoice";
+import { useVoiceCall } from "@/hooks/useVoiceCall";
+import { CLOSING_LINE, type AnswerOutcome } from "@/lib/voice-call";
 
 type Message = {
   role: "interviewer" | "user";
@@ -91,6 +94,11 @@ export default function InterviewPage() {
   // Type of the question currently being answered ("coding" | "technical" | "behavioral").
   const [currentType, setCurrentType] = useState<string | null>(null);
   const [showEditor, setShowEditor] = useState(false);
+  const searchParams = useSearchParams();
+  const startedAsCall = searchParams.get("call") === "1";
+  // What the server was last told about voice (null = never): typed answers after a call switch it back.
+  const lastVoiceModeRef = useRef<boolean | null>(startedAsCall ? true : null);
+  const callOfferedRef = useRef(false);
 
   const voice = useVoice(
     useCallback((text: string) => setAnswer((prev) => (prev ? `${prev} ${text}` : text)), []),
@@ -156,10 +164,11 @@ export default function InterviewPage() {
     setReloadKey((k) => k + 1);
   };
 
-  const handleSubmit = async () => {
-    const text = answer.trim();
-    if (!text || submittingRef.current || complete || sessionLost) return;
-
+  /**
+   * Send one answer (typed or spoken) and update the chat. Resolves with what
+   * the voice call should say next; typed answers ignore the result.
+   */
+  const performSubmit = async (text: string, viaVoice: boolean): Promise<AnswerOutcome> => {
     submittingRef.current = true;
     voice.stopListening();
     setSubmitting(true);
@@ -168,15 +177,25 @@ export default function InterviewPage() {
     setShowEditor(false);
     setSubmitError(null);
     setMessages((prev) => [...prev, { role: "user", content: text }]);
-    setAnswer("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    if (!viaVoice) {
+      setAnswer("");
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+    }
+    // Tell the server how to write the next question: for the ear during a call, normally after one.
+    const voiceMode = viaVoice ? true : lastVoiceModeRef.current === true ? false : undefined;
 
     try {
-      const res = await api.interviews.submitAnswerStream(interviewId, text, {
-        onStage: setPhase,
-        // The score arrives before the next question exists: show it right away.
-        onEvaluation: (ev) => setLiveScore(typeof ev.score === "number" ? ev.score : null),
-      });
+      const res = await api.interviews.submitAnswerStream(
+        interviewId,
+        text,
+        {
+          onStage: setPhase,
+          // The score arrives before the next question exists: show it right away.
+          onEvaluation: (ev) => setLiveScore(typeof ev.score === "number" ? ev.score : null),
+        },
+        { voiceMode },
+      );
+      if (voiceMode !== undefined) lastVoiceModeRef.current = voiceMode;
       setAnsweredCount((c) => c + 1);
 
       if (res.interview_complete) {
@@ -187,8 +206,9 @@ export default function InterviewPage() {
           { role: "interviewer", content: "Thank you for completing the interview! Opening your feedback report...", evaluation: res.evaluation },
         ]);
         setComplete(true);
-        goToReport();
-        return;
+        // In a call the closing line is spoken first; the call opens the report afterwards.
+        if (!viaVoice) goToReport();
+        return { kind: "complete", text: CLOSING_LINE };
       }
 
       const nextQuestion = res.next_question ?? "";
@@ -200,24 +220,28 @@ export default function InterviewPage() {
         { role: "interviewer", content: combinedText, evaluation: res.evaluation },
       ]);
       setCurrentType(res.next_question_type ?? null);
-      voice.say(combinedText);
+      if (!viaVoice) voice.say(combinedText); // during a call the call itself speaks
+      return { kind: "question", text: combinedText };
     } catch (e) {
       console.error("Failed to submit answer:", e);
       setMessages((prev) => prev.slice(0, -1));
-      setAnswer(text);
+      if (!viaVoice) setAnswer(text);
+      let message: string;
       if (isApiError(e) && e.status === 410) {
         setSessionLost(true);
+        message = "This interview's session was lost, so it can no longer accept answers.";
       } else if (isApiError(e) && e.status === 400 && /already completed/i.test(e.detail)) {
         setComplete(true);
+        message = "This interview is already finished.";
       } else if (isApiError(e) && (e.status === 409 || e.timedOut)) {
         // The backend may still be processing the earlier submission of this
         // answer; reloading shows its result instead of answering twice.
-        setSubmitError(
-          "Your answer is still being processed. Wait a moment, then reload this page to see the next question.",
-        );
+        message = "Your answer is still being processed. Wait a moment, then reload this page to see the next question.";
       } else {
-        setSubmitError(errorMessage(e, "Could not submit your answer. Please try again."));
+        message = errorMessage(e, "Could not submit your answer. Please try again.");
       }
+      if (!viaVoice) setSubmitError(message);
+      return { kind: "error", message };
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -225,6 +249,34 @@ export default function InterviewPage() {
       setLiveScore(null);
     }
   };
+
+  const handleSubmit = async () => {
+    const text = answer.trim();
+    if (!text || submittingRef.current || complete || sessionLost) return;
+    await performSubmit(text, false);
+  };
+
+  // ── Voice call (hands-free) ───────────────────────────────────────────────
+  const call = useVoiceCall({
+    onAnswer: (text) => performSubmit(text, true),
+    onComplete: goToReport,
+    onSwitchToTyping: (draft) => {
+      if (draft) setAnswer((prev) => (prev.trim() ? `${prev.trim()} ${draft}` : draft));
+      textareaRef.current?.focus();
+    },
+  });
+
+  const openCall = () => {
+    voice.stopListening(); // dictation and the call must not both own the microphone
+    call.openReady();
+  };
+
+  // A call started from the new-interview screen opens ready to go (starting still needs a click).
+  useEffect(() => {
+    if (!startedAsCall || callOfferedRef.current || loadState !== "ready" || complete || sessionLost) return;
+    callOfferedRef.current = true;
+    queueMicrotask(() => call.openReady());
+  }, [startedAsCall, loadState, complete, sessionLost, call]);
 
   const scoreColor = (s: number) =>
     s >= 8 ? "#22C55E" : s >= 6 ? "#F59E0B" : "#EF4444";
@@ -361,6 +413,23 @@ export default function InterviewPage() {
               </span>
             )}
           </div>
+          {!complete && !sessionLost && (
+            <button
+              id="start-voice-call-btn"
+              type="button"
+              onClick={openCall}
+              disabled={!call.supported}
+              title={call.supported ? "Take this interview as a voice call" : "Voice calls need speech recognition (Chrome or Edge on desktop)"}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 12px", borderRadius: "999px",
+                background: "rgba(104,169,186,0.12)", border: "1px solid rgba(104,169,186,0.35)", color: "#9dc4ce",
+                fontSize: "12px", fontWeight: 600, fontFamily: "inherit", flexShrink: 0,
+                cursor: call.supported ? "pointer" : "not-allowed", opacity: call.supported ? 1 : 0.5,
+              }}
+            >
+              <Phone size={13} /> Voice call
+            </button>
+          )}
           {meta && meta.totalQuestions > 0 && currentQuestionNumber > 0 && (
             <span aria-live="polite" style={{ fontSize: "12px", color: "var(--text-muted)", flexShrink: 0 }}>
               {complete
@@ -666,6 +735,20 @@ export default function InterviewPage() {
           </p>
         </div>
       </div>
+
+      <VoiceCallOverlay
+        call={call}
+        company={meta?.company ?? ""}
+        role={meta?.role ?? ""}
+        currentQuestion={[...messages].reverse().find((m) => m.role === "interviewer")?.content ?? ""}
+        questionNumber={meta && meta.totalQuestions > 0 ? Math.min(currentQuestionNumber, meta.totalQuestions) : currentQuestionNumber}
+        totalQuestions={meta?.totalQuestions ?? 0}
+        questionType={currentType}
+        onOpenEditor={() => {
+          call.end();
+          setShowEditor(true);
+        }}
+      />
     </div>
   );
 }

@@ -312,6 +312,8 @@ export type StartInterviewBody = {
       refresh_research?: boolean;
       /** Tailor questions to the stored resume (its text is sent to the AI provider). */
       use_resume?: boolean;
+      /** The interview will be taken as a voice call: questions are written to be spoken. */
+      voice_mode?: boolean;
     };
 
 export type StartInterviewResponse = {
@@ -569,10 +571,12 @@ export const api = {
         onStage?: (stage: AnswerStage) => void;
         onEvaluation?: (evaluation: Evaluation) => void;
       } = {},
+      /** `voiceMode` true/false switches how the NEXT questions are written; omit to leave it unchanged. */
+      options: { voiceMode?: boolean } = {},
     ) =>
       streamRequest<SubmitAnswerResponse>(
         `/api/interviews/${id}/answer/stream`,
-        { answer },
+        options.voiceMode === undefined ? { answer } : { answer, voice_mode: options.voiceMode },
         {
           stage: (d: { stage: AnswerStage }) => handlers.onStage?.(d.stage),
           evaluation: (d: { evaluation: Evaluation }) => handlers.onEvaluation?.(d.evaluation),
