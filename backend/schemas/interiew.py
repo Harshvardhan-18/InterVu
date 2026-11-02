@@ -25,6 +25,8 @@ class StartInterviewRequest(BaseModel):
     # Tailor questions to the candidate's stored resume text (opt-in; the text
     # is sent to the AI provider for this interview).
     use_resume: bool = False
+    # The candidate will take this interview as a voice call: write the questions for the ear.
+    voice_mode: bool = False
 
     @field_validator("username", "company", "role", mode="before")
     @classmethod
@@ -60,6 +62,9 @@ class StartInterviewResponse(BaseModel):
 
 class SubmitAnswerRequest(BaseModel):
     answer: str = Field(min_length=1, max_length=20000)
+    # True/False updates how the NEXT questions are written (voice call or text);
+    # None leaves the interview's current setting alone.
+    voice_mode: bool | None = None
 
     @field_validator("answer", mode="before")
     @classmethod

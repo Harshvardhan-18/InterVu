@@ -27,6 +27,19 @@ MAX_QUESTIONS_PER_SECTION = 3
 MAX_ANSWER_CHARS = 2000  # per answer in the running transcript
 MAX_RESUME_CHARS = 4000  # resume text placed in the prompt
 
+# Added to the prompt when the interview is a live voice call: everything the
+# model writes is read aloud by a text-to-speech voice.
+SPOKEN_STYLE_SECTION = (
+    "## Spoken conversation\n"
+    "This interview is a live voice call. Everything you write is read aloud by a "
+    "text-to-speech voice, so write for the ear: keep the acknowledgment to one short "
+    "sentence and the question to at most two short sentences; use no markdown, bullet "
+    "points, numbered lists, code blocks or symbols that sound odd when spoken; say "
+    "numbers and operators in words (for example \"O of n squared\"); never read out "
+    "scores. For coding questions, ask the candidate to talk you through their approach "
+    "out loud rather than to write code."
+)
+
 FALLBACK_TURN = {
     "acknowledgment": "",
     "question": "Can you walk me through a technical problem you've solved recently and how you approached it?",
@@ -128,6 +141,7 @@ class ConductorAgent:
         difficulty: str,
         qa_history: list[dict[str, Any]],
         candidate_background: str = "",
+        voice_mode: bool = False,
     ) -> dict[str, Any]:
         username = clean_line(username, 60)
         company = clean_line(company)
@@ -163,6 +177,7 @@ class ConductorAgent:
             difficulty=difficulty,
             conversation_history=_format_conversation_history(qa_history),
             candidate_background_section=background_section,
+            spoken_style_section=SPOKEN_STYLE_SECTION if voice_mode else "",
             untrusted_notice=UNTRUSTED_TEXT_NOTICE,
         )
 

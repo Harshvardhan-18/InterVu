@@ -362,6 +362,7 @@ async def _do_start(
         "username": body.username,
         "blueprint": blueprint,
         "candidate_background": candidate_background,
+        "voice_mode": body.voice_mode,
         "context": "",
         "current_question": "",
         "current_question_type": "",
@@ -519,7 +520,7 @@ async def submit_answer(
             detail="An answer for this interview is still being processed. Please wait for it to finish.",
         )
     async with interview_locks.hold(interview.id):
-        return await _advance_with_answer(db, interview, body.answer)
+        return await _advance_with_answer(db, interview, body.answer, voice_mode=body.voice_mode)
 
 
 async def _advance_with_answer(
@@ -527,6 +528,7 @@ async def _advance_with_answer(
     interview: Interview,
     answer: str,
     emit: Emit = None,
+    voice_mode: bool | None = None,
 ) -> SubmitAnswerResponse:
     """
     Body of POST /answer; runs under the interview's lock. With ``emit`` it
@@ -544,7 +546,10 @@ async def _advance_with_answer(
             detail="This interview's session state was lost (likely due to a server restart). Please start a new interview.",
         )
 
-    await compiled_graph.aupdate_state(config, {"current_answer": answer})
+    update: dict[str, Any] = {"current_answer": answer}
+    if voice_mode is not None:
+        update["voice_mode"] = voice_mode
+    await compiled_graph.aupdate_state(config, update)
 
     if emit is None:
         final_state = await compiled_graph.ainvoke(None, config=config)
@@ -664,6 +669,7 @@ async def submit_answer_stream(
     lock = interview_locks.hold(interview.id)
     await lock.__aenter__()
     answer = body.answer
+    voice_mode = body.voice_mode
     interview_pk = interview.id
 
     async def work(emit: Callable[[str, dict[str, Any]], Awaitable[None]]) -> dict[str, Any]:
@@ -671,7 +677,7 @@ async def submit_answer_stream(
             fresh = await session.get(Interview, interview_pk)
             if fresh is None:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interview not found")
-            return (await _advance_with_answer(session, fresh, answer, emit)).model_dump()
+            return (await _advance_with_answer(session, fresh, answer, emit, voice_mode)).model_dump()
 
     async def release() -> None:
         await lock.__aexit__(None, None, None)
