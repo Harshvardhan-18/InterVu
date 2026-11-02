@@ -30,6 +30,15 @@ logger = logging.getLogger(__name__)
 # Longer answers are truncated before they reach the prompt.
 MAX_ANSWER_CHARS = 8000
 
+# Added when the answer was spoken and transcribed by speech recognition.
+VOICE_NOTE = (
+    "## Spoken answer\n"
+    "This answer was spoken aloud and transcribed automatically. Ignore missing "
+    "punctuation, capitalisation, filler words and small transcription slips (for "
+    "example a technical term misheard as a similar word); judge the substance, "
+    "structure and clarity of what the candidate meant.\n"
+)
+
 FALLBACK_EVALUATION = {
     "score": 5.0,
     "correctness": 5.0,
@@ -71,7 +80,8 @@ class EvaluatorAgent:
         answer: str,
         context: str,
         section: str,
-        question_type: str = "technical"
+        question_type: str = "technical",
+        voice_mode: bool = False,
     ) -> dict[str, Any]:
         """
         Evaluate the candidate's answer.
@@ -98,6 +108,7 @@ class EvaluatorAgent:
             # The answer is untrusted: fenced so it cannot pose as instructions.
             answer=fence(answer, max_chars=MAX_ANSWER_CHARS),
             untrusted_notice=UNTRUSTED_TEXT_NOTICE,
+            voice_note=VOICE_NOTE if voice_mode else "",
             context=context
         )
         try:

@@ -13,6 +13,7 @@ The answer may contain code in fenced blocks and pasted program output. Output i
 self-reported by the candidate and has NOT been verified: judge the code itself
 (correctness, edge cases, complexity, clarity), not the claim that it works.
 
+{voice_note}
 ## Reference Context (use this to assess correctness):
 {context}
 

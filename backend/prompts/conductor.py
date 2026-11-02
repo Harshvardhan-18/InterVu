@@ -33,6 +33,8 @@ do not paraphrase, abbreviate, or invent a new name):
 
 {candidate_background_section}
 
+{spoken_style_section}
+
 ## Difficulty Level: {difficulty}
 
 ## Conversation So Far

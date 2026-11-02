@@ -1,6 +1,7 @@
 "use client";
 import { api, auth, errorMessage, type ResumeInfo, type StartStage } from "@/lib/api";
 import { useEffect, useState } from "react";
+import { speechSupport } from "@/lib/speech";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/app-shell";
@@ -61,6 +62,14 @@ export default function NewInterviewPage() {
   const [startError, setStartError] = useState<string | null>(null);
   const [resume, setResume] = useState<ResumeInfo | null>(null);
   const [useResume, setUseResume] = useState(false);
+  const [voiceCall, setVoiceCall] = useState(false);
+  const [canVoiceCall, setCanVoiceCall] = useState(false);
+
+  useEffect(() => {
+    // Speech support is only knowable in the browser; applied after mount to keep server and client renders equal.
+    const support = speechSupport();
+    queueMicrotask(() => setCanVoiceCall(support.speak && support.dictate));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +106,7 @@ export default function NewInterviewPage() {
           role: role.trim(),
           difficulty,
           use_resume: useResume && resume?.has_resume === true,
+          voice_mode: voiceCall && canVoiceCall,
         },
         (stage) => {
           // Real progress from the server: everything before this step is done.
@@ -107,7 +117,7 @@ export default function NewInterviewPage() {
         },
       );
       setDoneSteps(STEP_ORDER);
-      router.push(`/interview/${result.interview_id}`);
+      router.push(`/interview/${result.interview_id}${voiceCall && canVoiceCall ? "?call=1" : ""}`);
     } catch (error) {
       console.error("Error starting interview:", error);
       setStartError(errorMessage(error, "Failed to start the interview. Please try again."));
@@ -362,12 +372,31 @@ export default function NewInterviewPage() {
                     { label: "Role",       value: role },
                     { label: "Difficulty", value: difficulty },
                     { label: "Resume",     value: useResume && resume?.has_resume ? "Used to tailor questions" : "Not used" },
+                    { label: "Format",     value: voiceCall && canVoiceCall ? "Voice call" : "Typed chat" },
                   ].map(item => (
                     <div key={item.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid var(--border-subtle)" }}>
                       <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>{item.label}</span>
                       <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>{item.value}</span>
                     </div>
                   ))}
+                </div>
+                <div id="voice-option" style={{ marginBottom: "16px", fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                  <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", cursor: canVoiceCall ? "pointer" : "not-allowed", opacity: canVoiceCall ? 1 : 0.6 }}>
+                    <input
+                      id="voice-call-checkbox"
+                      type="checkbox"
+                      checked={voiceCall && canVoiceCall}
+                      disabled={!canVoiceCall}
+                      onChange={(e) => setVoiceCall(e.target.checked)}
+                      style={{ marginTop: "3px" }}
+                    />
+                    <span>
+                      <strong style={{ color: "var(--text-primary)" }}>Take this interview as a voice call.</strong> You speak, the
+                      interviewer talks back, and your answers are sent when you pause, like a phone call. Your browser&apos;s speech
+                      service handles the audio (in Chrome, that is Google&apos;s); InterVu only receives the text.
+                      {!canVoiceCall && " Not available in this browser: use Chrome or Edge on desktop."}
+                    </span>
+                  </label>
                 </div>
                 <div id="resume-option" style={{ marginBottom: "20px", fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: 1.6 }}>
                   {resume?.has_resume ? (

@@ -7,6 +7,8 @@
  *    receives or stores any audio, only the text you choose to submit.
  */
 
+import { pickVoice, splitForSpeech } from "@/lib/voice-call";
+
 type RecognitionResult = { isFinal: boolean; 0: { transcript: string } };
 type RecognitionEvent = { resultIndex: number; results: ArrayLike<RecognitionResult> };
 
@@ -23,6 +25,7 @@ type RecognitionLike = {
 };
 
 type RecognitionCtor = new () => RecognitionLike;
+
 
 function recognitionCtor(): RecognitionCtor | null {
   if (typeof window === "undefined") return null;
@@ -62,7 +65,7 @@ export function stopSpeaking(): void {
   }
 }
 
-export type Dictation = { start: () => void; stop: () => void };
+export type Dictation = { start: () => void; stop: () => void; abort: () => void };
 
 export function createDictation(handlers: {
   /** `final` is newly finished text to append; `interim` is the in-progress guess. */
@@ -89,5 +92,161 @@ export function createDictation(handlers: {
   };
   recognition.onerror = (e) => handlers.onError(e.error ?? "unknown");
   recognition.onend = () => handlers.onEnd();
-  return { start: () => recognition.start(), stop: () => recognition.stop() };
+  return {
+    start: () => recognition.start(),
+    stop: () => recognition.stop(),
+    abort: () => {
+      // Drop the handlers first so an aborted session cannot report results or "ended" later.
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      try {
+        recognition.abort();
+      } catch {
+        // Already stopped.
+      }
+    },
+  };
+}
+
+// ── Speaking with real start / end events (used by the voice call) ────────────
+
+export type SpeechOptions = {
+  lang?: string;
+  /** 0.5 to 2, 1 = normal. */
+  rate?: number;
+  voiceURI?: string | null;
+  onStart?: () => void;
+  /** All of the text was spoken (or the voice could not speak it and gave up). */
+  onEnd?: () => void;
+  /** The speech engine failed; speaking stops. `onEnd` is NOT called after this. */
+  onError?: (reason: string) => void;
+};
+
+export type SpeechHandle = { cancel: () => void };
+
+/** Voices installed in the browser (may be empty until `voiceschanged` fires). */
+export function listVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return [];
+  try {
+    return window.speechSynthesis.getVoices();
+  } catch {
+    return [];
+  }
+}
+
+/** Call `callback` when the voice list changes. Returns an unsubscribe function. */
+export function onVoicesChanged(callback: () => void): () => void {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return () => {};
+  const synth = window.speechSynthesis;
+  try {
+    synth.addEventListener("voiceschanged", callback);
+  } catch {
+    return () => {};
+  }
+  return () => {
+    try {
+      synth.removeEventListener("voiceschanged", callback);
+    } catch {
+      // ignore
+    }
+  };
+}
+
+/**
+ * Speak `text` sentence by sentence, reporting when speaking really starts and
+ * ends. Each piece also has a watchdog: if a browser never reports the end of
+ * an utterance, the call moves on instead of hanging forever.
+ */
+export function speakText(text: string, options: SpeechOptions = {}): SpeechHandle {
+  const chunks = splitForSpeech(text);
+  const supported = typeof window !== "undefined" && "speechSynthesis" in window;
+  let cancelled = false;
+  let finished = false;
+  let started = false;
+  let index = 0;
+  let watchdog: ReturnType<typeof setTimeout> | undefined;
+
+  const finish = () => {
+    if (cancelled || finished) return;
+    finished = true;
+    options.onEnd?.();
+  };
+
+  if (!supported || chunks.length === 0) {
+    queueMicrotask(finish);
+    return { cancel: () => { cancelled = true; } };
+  }
+
+  const synth = window.speechSynthesis;
+
+  const next = () => {
+    if (cancelled || finished) return;
+    clearTimeout(watchdog);
+    if (index >= chunks.length) {
+      finish();
+      return;
+    }
+    const piece = chunks[index++];
+    let advanced = false;
+    const advance = () => {
+      if (advanced) return;
+      advanced = true;
+      clearTimeout(watchdog);
+      next();
+    };
+    try {
+      const utterance = new SpeechSynthesisUtterance(piece);
+      utterance.lang = options.lang ?? "en-US";
+      utterance.rate = options.rate ?? 1;
+      const voice = pickVoice(
+        listVoices().map((v) => ({ name: v.name, lang: v.lang, voiceURI: v.voiceURI, default: v.default, raw: v })),
+        options.voiceURI ?? null,
+        (options.lang ?? "en-US").slice(0, 2),
+      );
+      if (voice) utterance.voice = voice.raw;
+      utterance.onstart = () => {
+        if (!started) {
+          started = true;
+          options.onStart?.();
+        }
+      };
+      utterance.onend = advance;
+      utterance.onerror = (event) => {
+        if (cancelled || advanced) return;
+        const reason = (event as { error?: string }).error ?? "unknown";
+        if (reason === "interrupted" || reason === "canceled") return; // we cancelled it ourselves
+        cancelled = true;
+        clearTimeout(watchdog);
+        options.onError?.(reason);
+      };
+      // Generous upper bound for this piece; only matters if the browser never says "end".
+      const budget = Math.max(4000, piece.length * 130 + 2500) / Math.max(0.5, options.rate ?? 1);
+      watchdog = setTimeout(advance, budget);
+      synth.speak(utterance);
+    } catch (error) {
+      cancelled = true;
+      options.onError?.(error instanceof Error ? error.message : "speak-failed");
+    }
+  };
+
+  try {
+    synth.cancel(); // clear anything left in the queue
+  } catch {
+    // ignore
+  }
+  next();
+
+  return {
+    cancel: () => {
+      if (cancelled) return;
+      cancelled = true;
+      clearTimeout(watchdog);
+      try {
+        synth.cancel();
+      } catch {
+        // ignore
+      }
+    },
+  };
 }

@@ -14,7 +14,7 @@ ADMIN_PY   := .venv/bin/python
 
 .PHONY: help setup setup-backend setup-frontend setup-admin backend-env \
         backend frontend admin \
-        test test-backend lint lint-frontend lint-backend check-admin \
+        test test-backend test-frontend lint lint-frontend lint-backend check-admin \
         db-up db-down up down migrate migration
 
 help: ## Show this help
@@ -64,10 +64,13 @@ admin: ## Run the Django admin on http://127.0.0.1:8002
 
 # ── Quality ───────────────────────────────────────────────────────────────────
 
-test: test-backend ## Run all automated tests
+test: test-backend test-frontend ## Run all automated tests
 
 test-backend: ## Run the backend pytest suite (mocked LLMs/DB, no keys needed)
 	cd $(BACKEND_DIR) && ENV=test $(BACKEND_PY) -m pytest -q
+
+test-frontend: ## Run the frontend unit tests (vitest)
+	cd $(FRONTEND_DIR) && npm test
 
 lint: lint-backend lint-frontend check-admin ## Static checks for every component
 

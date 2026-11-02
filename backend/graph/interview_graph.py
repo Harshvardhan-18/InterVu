@@ -61,6 +61,10 @@ class InterviewState(TypedDict):
     # Optional resume text (opt-in, untrusted); "" when not used.
     candidate_background: str
 
+    # True when the candidate takes the interview as a voice call: questions are
+    # written for the ear and answers are known to be speech transcripts.
+    voice_mode: bool
+
     # Current turn
     context: str
     current_question: str
@@ -159,6 +163,7 @@ async def generate_question(state: InterviewState) -> dict[str, Any]:
         difficulty=state["difficulty"],
         qa_history=state["qa_history"],
         candidate_background=state.get("candidate_background", ""),
+        voice_mode=bool(state.get("voice_mode", False)),
     )
 
     return {
@@ -182,6 +187,7 @@ async def evaluate_answer(state: InterviewState) -> dict[str, Any]:
         question_type=state["current_question_type"],
         context=state["context"],
         answer=state["current_answer"],
+        voice_mode=bool(state.get("voice_mode", False)),
     )
     return {"evaluation": evaluation}
 
